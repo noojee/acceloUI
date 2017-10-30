@@ -112,10 +112,11 @@ class ContractLine implements Comparable<ContractLine>
 	{
 		try
 		{
-			List<Ticket> tickets = new TicketDao().getByContract(this.contract);
+			TicketDao daoTicket = new TicketDao();
+			List<Ticket> tickets = daoTicket.getByContract(this.contract);
 
-			ContractLine.this.mtdWork = Duration.ofSeconds(tickets.stream().mapToLong(t -> t.sumMTDWork().getSeconds()).sum());
-			ContractLine.this.lastMonthWork = Duration.ofSeconds(tickets.stream().mapToLong(t -> t.sumLastMonthWork().getSeconds()).sum());
+			ContractLine.this.mtdWork = Duration.ofSeconds(tickets.stream().mapToLong(t -> daoTicket.sumMTDWork(t).getSeconds()).sum());
+			ContractLine.this.lastMonthWork = Duration.ofSeconds(tickets.stream().mapToLong(t -> daoTicket.sumLastMonthWork(t).getSeconds()).sum());
 
 		}
 		catch (AcceloException e)

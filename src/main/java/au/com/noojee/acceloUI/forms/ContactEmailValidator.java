@@ -4,8 +4,6 @@ import com.vaadin.data.ValidationResult;
 import com.vaadin.data.Validator;
 import com.vaadin.data.ValueContext;
 
-import au.com.noojee.acceloapi.entities.Contact;
-
 public class ContactEmailValidator implements Validator<EmailForm.Contact>
 {
 	private static final long serialVersionUID = 1L;

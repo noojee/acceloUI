@@ -23,7 +23,6 @@ import au.com.noojee.acceloUI.authentication.AccessControl;
 import au.com.noojee.acceloUI.authentication.BasicAccessControl;
 import au.com.noojee.acceloUI.authentication.LoginScreen;
 import au.com.noojee.acceloUI.authentication.LoginScreen.LoginListener;
-import au.com.noojee.acceloUI.forms.SMTPServerSetting;
 import au.com.noojee.acceloUI.main.Broadcaster.BroadcastListener;
 import au.com.noojee.acceloapi.AcceloApi;
 import au.com.noojee.acceloapi.AcceloException;

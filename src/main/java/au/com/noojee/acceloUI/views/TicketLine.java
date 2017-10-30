@@ -83,19 +83,20 @@ public class TicketLine implements Comparable<TicketLine>
 
 	void loadWork()
 	{
-		this.ticket.getBillable();
-		this.ticket.sumMTDWork();
-		this.ticket.sumLastMonthWork();
+		TicketDao daoTicket = new TicketDao();
+		daoTicket.getBillable(ticket);
+		daoTicket.sumMTDWork(ticket);
+		daoTicket.sumLastMonthWork(ticket);
 	}
 
 	Duration getBillable()
 	{
-		return ticket.getBillable();
+		return new TicketDao().getBillable(ticket);
 	}
 
 	Duration getNonBillable()
 	{
-		return ticket.getBillable();
+		return new TicketDao().getNonBillable(ticket);
 	}
 
 	LocalDate getDateStarted()
@@ -117,7 +118,7 @@ public class TicketLine implements Comparable<TicketLine>
 		boolean approved = false;
 		try
 		{
-			approved = ticket.isFullyApproved();
+			approved = new TicketDao().isFullyApproved(ticket);
 		}
 		catch (AcceloException e)
 		{

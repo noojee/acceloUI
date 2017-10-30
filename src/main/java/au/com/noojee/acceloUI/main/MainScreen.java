@@ -6,12 +6,12 @@ import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.ui.CssLayout;
 import com.vaadin.ui.HorizontalLayout;
 
+import au.com.noojee.acceloUI.about.AboutView;
 import au.com.noojee.acceloUI.views.ActivityView;
 import au.com.noojee.acceloUI.views.CompanyView;
 import au.com.noojee.acceloUI.views.ErrorView;
 import au.com.noojee.acceloUI.views.Menu;
 import au.com.noojee.acceloUI.views.TicketView;
-import au.com.noojee.acceloUI.about.AboutView;
 
 /**
  * Content of the UI when the user is logged in.

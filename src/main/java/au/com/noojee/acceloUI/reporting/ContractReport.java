@@ -1,7 +1,6 @@
 package au.com.noojee.acceloUI.reporting;
 
 import java.io.File;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -59,7 +58,6 @@ public class ContractReport
 	{
 		Contract contract = new ContractDao().getById(contractPeriod.getContractId());
 		Company company = new CompanyDao().getById(contract.getCompanyId());
-		LocalDate lastMonth = LocalDate.now().minusMonths(1).withDayOfMonth(1);
 
 		return new File(company.getName() + "-SLA Usage Report-" + contractPeriod.getPeriodRange()  + ".xlsx").getName().replaceAll(" ", "");
 	}

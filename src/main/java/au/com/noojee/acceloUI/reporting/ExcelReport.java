@@ -229,8 +229,10 @@ public class ExcelReport
 	void writeTicketActivities(Ticket ticket) throws AcceloException
 	{
 		Sheet activitySheet = workbook.createSheet("Ticket-" + ticket.getId());
+		
+		TicketDao daoTicket = new TicketDao();
 
-		List<Activity> activities = new TicketDao().getActivities(ticket);
+		List<Activity> activities = daoTicket.getActivities(ticket);
 
 		int rowCount = 0;
 		int columnCount = 0;
@@ -278,7 +280,7 @@ public class ExcelReport
 		// Contact Full Name
 		cell = row.createCell(columnCount++);
 		activitySheet.setColumnWidth(columnCount - 1, PixelUtil.pixel2WidthUnits(80));
-		Contact contact = new TicketDao().getContact(ticket);
+		Contact contact = daoTicket.getContact(ticket);
 		if (contact != null)
 			cell.setCellValue(contact.getFullName());
 
@@ -295,7 +297,7 @@ public class ExcelReport
 		// Billable
 		row = activitySheet.createRow(rowCount++);
 		columnCount = 0;
-		Duration billable = ticket.getBillable();
+		Duration billable = daoTicket.getBillable(ticket);
 		cell = row.createCell(columnCount++);
 		cell.setCellValue("Billable");
 		cell.setCellStyle(boldStyle);

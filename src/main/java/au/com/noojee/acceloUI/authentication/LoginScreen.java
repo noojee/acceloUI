@@ -17,10 +17,10 @@ import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
-import au.com.noojee.acceloapi.dao.StaffDao;
-import au.com.noojee.acceloapi.entities.Staff;
 import au.com.noojee.acceloUI.authentication.oauth.AuthListener;
 import au.com.noojee.acceloUI.authentication.oauth.Person;
+import au.com.noojee.acceloapi.dao.StaffDao;
+import au.com.noojee.acceloapi.entities.Staff;
 
 /**
  * UI content when the user is not logged in yet.
