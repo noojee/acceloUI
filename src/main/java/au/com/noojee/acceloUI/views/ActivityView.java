@@ -11,16 +11,19 @@ import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.shared.ui.MarginInfo;
+import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
+import com.vaadin.ui.MultiSelect;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.renderers.LocalDateRenderer;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.Formatters;
+import au.com.noojee.acceloapi.dao.ActivityDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.entities.Ticket;
@@ -130,12 +133,16 @@ public class ActivityView extends VerticalLayout implements View
 			this.setSpacing(true);
 			this.setSizeFull();
 
-			loading = new Label("Loading...");
-			this.addComponent(loading);
+			Label heading = new Label("<H2><b>Ticket Activities</b></H2>");
+			heading.setContentMode(ContentMode.HTML);
+			this.addComponent(heading);
+
+			
 			
 			this.addComponent(createTicketDetails());
 
 			grid = new Grid<>();
+			grid.setSelectionMode(Grid.SelectionMode.MULTI);
 			grid.setSizeFull();
 			grid.addColumn(ActivityLine::getSubject).setCaption("Subject").setExpandRatio(1);
 			grid.addColumn(ActivityLine::getStanding).setCaption("Standing");
@@ -184,6 +191,10 @@ public class ActivityView extends VerticalLayout implements View
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 2); // 2/3 of the screen.
 			
+			Button delete = new Button("Delete");
+			delete.addClickListener(l -> deleteActivities());
+			this.addComponent(delete);
+			
 			activityViewSubject = new Label();
 			activityViewSubject.setWidth("100%");
 			activityViewSubject.setContentMode(ContentMode.HTML);
@@ -203,7 +214,22 @@ public class ActivityView extends VerticalLayout implements View
 			
 			this.addComponent(panel);
 			this.setExpandRatio(panel, 1); // 1/3 of the screen.
+			
+			loading = new Label("Loading...");
+			this.addComponent(loading);
+	
 		}
+	}
+
+	private void deleteActivities()
+	{
+		MultiSelect<ActivityLine> selections = this.grid.asMultiSelect();
+		
+		selections.getValue().stream().forEach(line -> {
+
+			new ActivityDao().delete(line.getActivity());
+		});
+		
 	}
 
 	private Component createTicketDetails()

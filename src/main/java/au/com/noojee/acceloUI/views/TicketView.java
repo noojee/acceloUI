@@ -14,7 +14,9 @@ import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.icons.VaadinIcons;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.shared.ui.MarginInfo;
+import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.Grid;
@@ -24,6 +26,7 @@ import com.vaadin.ui.Notification;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.renderers.LocalDateRenderer;
+import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.Formatters;
@@ -33,6 +36,7 @@ import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.filter.AcceloCache;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
 import au.com.noojee.acceloapi.filter.expressions.After;
 import au.com.noojee.acceloapi.filter.expressions.Against;
@@ -103,17 +107,16 @@ public class TicketView extends VerticalLayout implements View
 		if (contractId != -1 && contractId != currentContractId)
 		{
 			currentContractId = contractId;
-			
+
 			Contract contract = new ContractDao().getById(currentContractId);
 			Company company = new CompanyDao().getById(contract.getCompanyId());
-			
+
 			companyName.setValue("Company: " + company.getName());
 			contractTitle.setValue("Contract: " + contract.getTitle());
 			contractStartDate.setValue("Start: " + Formatters.format(contract.getDateStarted()));
 			contractEndDate.setValue("Expires: " + Formatters.format(contract.getDateExpires()));
 			contractValue.setValue("Value: " + Formatters.format(contract.getValue()));
 			contractRemaining.setValue("Remaining: " + Formatters.format(contract.getRemainingValue()));
-
 
 			logger.error("Start fetch Tickets");
 
@@ -123,7 +126,6 @@ public class TicketView extends VerticalLayout implements View
 				ticketLines.clear();
 				updateLoading("Loading");
 
-				
 				try
 				{
 					if (contract != null)
@@ -172,10 +174,13 @@ public class TicketView extends VerticalLayout implements View
 		int contractId = -1;
 
 		// Do we need to load data
-		if (contractIdParam != null && contractIdParam.length() > 0)
+		if (contractIdParam != null && !contractIdParam.isEmpty())
 		{
 			contractId = Integer.valueOf(contractIdParam);
 		}
+		else
+			// if nothing was passed show the current data.
+			contractId = currentContractId;
 		return contractId;
 	}
 
@@ -231,9 +236,9 @@ public class TicketView extends VerticalLayout implements View
 			this.setMargin(true);
 			this.setSpacing(true);
 			this.setSizeFull();
-
-			loading = new Label("Loading...");
-			this.addComponent(loading);
+			Label heading = new Label("<H2><b>Contract Tickets</b></H2>");
+			heading.setContentMode(ContentMode.HTML);
+			this.addComponent(heading);
 
 			this.addComponent(createContractDetails());
 
@@ -250,18 +255,24 @@ public class TicketView extends VerticalLayout implements View
 			grid.addColumn(TicketLine::getDateLastInteracted, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Updated")
 					.setWidth(120);
 			grid.addColumn(TicketLine::getAssignee).setCaption("Engineer").setWidth(120);
-			grid.addColumn(TicketLine::getContact).setCaption("Contact").setWidth(200);
+			grid.addColumn(TicketLine::getContact).setCaption("Contact").setWidth(160);
 			grid.addColumn(TicketLine::isOpen).setCaption("Open");
 			grid.addColumn(TicketLine::isFullyApproved).setCaption("Approved");
-			grid.addColumn(TicketLine::isAttached).setCaption("Attached");
 
-			grid.addComponentColumn(
-					ticketLine -> new IconButton("Attach", VaadinIcons.LINK, e -> attachToContract(ticketLine)))
-					.setWidth(80);
+			grid.addComponentColumn(ticketLine -> {
+				IconButton link = new IconButton("Attach To Contract", VaadinIcons.LINK,
+						e -> attachToContract(ticketLine));
+				link.setEnabled(!ticketLine.isAttached());
+				if (!ticketLine.isAttached())
+				{
+					link.setStyleName(ValoTheme.BUTTON_FRIENDLY);
+				}
+				return link;
+			}).setWidth(80).setCaption("Link");
 
-			grid.addComponentColumn(ticketLine -> new IconButton("View", VaadinIcons.SEARCH, e -> {
+			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e -> {
 				UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
-			})).setWidth(80);
+			})).setWidth(80).setCaption("Details");
 
 			grid.addColumn(ticketLine -> formatDuration(ticketLine.getBillable())).setCaption("Billable")
 					.setStyleGenerator(ticketLine -> "align-right");
@@ -274,19 +285,46 @@ public class TicketView extends VerticalLayout implements View
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 1);
 
+			HorizontalLayout bottomLine = new HorizontalLayout();
+			bottomLine.setWidth("100%");
+			this.addComponent(bottomLine);
+
+			loading = new Label("Loading Contracts ...");
+			bottomLine.addComponent(loading);
+			bottomLine.setComponentAlignment(loading, Alignment.MIDDLE_LEFT);
+
+			Button flush = new Button("Flush Cache");
+			bottomLine.addComponent(flush);
+			bottomLine.setComponentAlignment(flush, Alignment.MIDDLE_RIGHT);
+			flush.addClickListener(l -> flushCache());
 		}
 
+	}
+
+	private void flushCache()
+	{
+		AcceloCache.getInstance().flushCache();
+		/*
+		 * // Flush the tickets and activities current on display.
+		 * 
+		 * for ( TicketLine line : ticketLines) { Ticket ticket = line.ticket;
+		 * 
+		 * AcceloCache.getInstance().flushEntities(new
+		 * TicketDao().getActivities(ticket));
+		 * AcceloCache.getInstance().flushEntity(ticket); }
+		 */
+		ticketProvider.refreshAll();
 	}
 
 	private Component createContractDetails()
 	{
 		VerticalLayout layout = new VerticalLayout();
 		layout.setSpacing(false);
-		layout.setMargin(new MarginInfo(false, true));
+		layout.setMargin(new MarginInfo(false, false));
 
 		HorizontalLayout overviewLayout = new HorizontalLayout();
 		overviewLayout.setMargin(new MarginInfo(false, false));
-		
+
 		layout.addComponent(overviewLayout);
 		companyName = new Label();
 		overviewLayout.addComponent(companyName);
@@ -331,4 +369,3 @@ public class TicketView extends VerticalLayout implements View
 	}
 
 }
-

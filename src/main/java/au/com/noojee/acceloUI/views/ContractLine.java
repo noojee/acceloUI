@@ -17,6 +17,8 @@ import au.com.noojee.acceloapi.dao.CompanyDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 class ContractLine implements Comparable<ContractLine>
 {
@@ -127,7 +129,13 @@ class ContractLine implements Comparable<ContractLine>
 
 	public int getUnassignedTicketCount()
 	{
-		return this.unassignedTickets;
+		
+		AcceloFilter filter = new AcceloFilter();
+		filter.where(new Eq("contract", 0).and(new Eq("company", this.contract.getCompanyId())));
+		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
+		
+		return unassignedTickets.size();
+	
 	}
 
 //	public void setRemainingValue(Money remainingValue)

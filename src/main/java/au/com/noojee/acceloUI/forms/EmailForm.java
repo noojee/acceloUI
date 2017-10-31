@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.activation.DataSource;
 
@@ -57,18 +58,22 @@ public class EmailForm extends Window
 	class TargetLine
 	{
 		ComboBox<EmailAddressType> targetTypeCombo;
-		ComboBox<Contact> targetAddress;
+		ComboBox<EmailForm.Contact> targetAddress;
 		Button minusButton;
 		private Subscription buttonSubscription;
 		public int row;
-		public Binder<Contact> targetAddressBinder;
+		public Binder<EmailForm.Contact> targetAddressBinder;
 	}
 
 	ArrayList<TargetLine> lines = new ArrayList<>();
 	private final ComboBox<EmailAddressType> primaryTypeCombo;
 	private final TextField primaryTargetAddress;
 	private final Button primaryPlusButton;
+	
 	private String body;
+	
+	private List<EmailForm.Contact> alternateContacts;
+	private ListDataProvider<EmailForm.Contact> alternateContactDataProvider;
 
 	/**
 	 *
@@ -80,6 +85,9 @@ public class EmailForm extends Window
 
 		this.sender = sender;
 		this.contactProvider = contactProvider;
+		
+		alternateContacts = this.contactProvider.getAlternateContacts().stream().distinct().collect(Collectors.toList());
+		alternateContactDataProvider = new ListDataProvider<>(alternateContacts);
 
 		this.setWidth("80%");
 		this.setHeight("80%");
@@ -98,23 +106,21 @@ public class EmailForm extends Window
 		this.grid.setColumnExpandRatio(1, (float) 1.0);
 		this.grid.setSpacing(true);
 
+		// List of Target types 'To', 'CC' ...
 		final List<EmailAddressType> targetTypes = getTargetTypes();
-
 		this.primaryTypeCombo = new ComboBox<EmailAddressType>(null, targetTypes);
 		this.primaryTypeCombo.setWidth("100");
 		this.primaryTypeCombo.setSelectedItem(targetTypes.get(0));
-		// this.getPrimaryTypeCombo().select(EmailAddressType.To);
 		this.grid.addComponent(this.primaryTypeCombo);
 
+		// The first 'To' address
 		this.primaryTargetAddress = new TextField(null, toEmailAddress);
 		this.primaryTargetAddress.setWidth("100%");
-		// primaryTargetAddress.setReadOnly(true);
 		new Binder<String>().forField(this.primaryTargetAddress)
 				.withValidator(new EmailValidator("Please enter a valid email address."));
-		// this.getPrimaryTargetAddress().withValidator(new
-		// EmailValidator("Please enter a valid email address."));
 		this.grid.addComponent(this.primaryTargetAddress);
 
+		// Button to add additional 'To' addresses.
 		this.primaryPlusButton = new Button("+");
 		this.primaryPlusButton.setDescription("Click to add another email address line.");
 		this.primaryPlusButton.setStyleName(ValoTheme.BUTTON_SMALL);
@@ -122,35 +128,43 @@ public class EmailForm extends Window
 		final Action1<ClickEvent> plusClickAction = new PlusClickAction();
 		ButtonEventSource.fromActionOf(this.primaryPlusButton).subscribe(plusClickAction);
 
+		// Subject line.
 		this.subject = new TextField("Subject");
 		this.subject.setWidth("100%");
-
 		baseLayout.addComponent(this.subject);
+		
+		// Body
 		this.ckEditor = new CKEditorEmailField(false);
 		baseLayout.addComponent(this.getCkEditor());
 		baseLayout.setExpandRatio(this.getCkEditor(), 1.0f);
 
+		// Upload areas.
 		final HorizontalLayout uploadArea = new HorizontalLayout();
+		baseLayout.addComponent(uploadArea);
+		uploadArea.setWidth("100%");
+		
 		final AbstractLayout uploadWidget = addUploadWidget();
 		uploadArea.addComponent(uploadWidget);
+		
+		/// Attached files.
 		this.attachedFiles = new VerticalLayout();
+		uploadArea.addComponent(this.attachedFiles);
 		final Label attachedLabel = new Label("<b>Attached Files</b>");
 		attachedLabel.setContentMode(ContentMode.HTML);
 		this.attachedFiles.addComponent(attachedLabel);
-		uploadArea.addComponent(this.attachedFiles);
-		uploadArea.setWidth("100%");
+
+		
 		uploadArea.setComponentAlignment(uploadWidget, Alignment.TOP_LEFT);
 		uploadArea.setComponentAlignment(this.attachedFiles, Alignment.TOP_RIGHT);
 
-		baseLayout.addComponent(uploadArea);
-
+		// Send Button
 		this.send = new Button("Send");
+		baseLayout.addComponent(this.getSend());
+
 		this.send.setStyleName(ValoTheme.BUTTON_PRIMARY);
 		this.getSend().setDescription("Click to send this email.");
 		final Action1<ClickEvent> sendClickAction = new SendClickAction();
 		ButtonEventSource.fromActionOf(this.getSend()).subscribe(sendClickAction);
-
-		baseLayout.addComponent(this.getSend());
 		baseLayout.setComponentAlignment(this.send, Alignment.BOTTOM_RIGHT);
 
 		this.subject.focus();
@@ -275,27 +289,26 @@ public class EmailForm extends Window
 		line.targetAddress.setPlaceholder("Enter Contact Name or email address");
 		line.targetAddress.setWidth("100%");
 
-		line.targetAddressBinder = new Binder<Contact>();
+		line.targetAddressBinder = new Binder<EmailForm.Contact>();
 
 		line.targetAddressBinder.forField(line.targetAddress)
 				.withValidator(new ContactEmailValidator("Please enter a valid email address."));
 
-		line.targetAddress.setDataProvider(new ListDataProvider<Contact>(this.contactProvider.getAlternateContacts()));
-		line.targetAddress.setItemCaptionGenerator(Contact::getFullName);
+		line.targetAddress.setDataProvider(alternateContactDataProvider);
+		line.targetAddress.setItemCaptionGenerator(EmailForm.Contact::getFullName);
 
-		// line.targetAddress.setNewItemHandler(inputString ->
-		// {
-		// final ListDataProvider<Contact> contactProvider =
-		// (ListDataProvider<Contact>) line.targetAddress.getDataProvider();
-		//
-		// Contact contact = new Contact();
-		// // contact.se
-		// list.add(contact);
-		//
-		// listDataProvider.refreshItem(contact);
-		//
-		// line.targetAddress.setSelectedItem(contact);
+		// line.targetAddress.setNewItemHandler(inputString -> {
+		// new Contact("", inputString);
 		// });
+
+		line.targetAddress.setNewItemHandler(inputString -> {
+
+			EmailForm.Contact contact = new EmailForm.Contact(inputString, inputString);
+			alternateContacts.add(contact);
+			alternateContactDataProvider.refreshItem(contact);
+
+			line.targetAddress.setSelectedItem(contact);
+		});
 
 		line.minusButton = new Button("-");
 		line.minusButton.setDescription("Click to remove this email address line.");

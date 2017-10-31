@@ -95,4 +95,9 @@ public class ActivityLine
 		return this.activity.getBody();
 	}
 
+	public Activity getActivity()
+	{
+		return this.activity;
+	}
+
 }

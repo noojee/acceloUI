@@ -89,18 +89,6 @@ public class CompanyView extends VerticalLayout implements View
 			this.setSpacing(true);
 			this.setSizeFull();
 
-			HorizontalLayout topLine = new HorizontalLayout();
-			topLine.setWidth("100%");
-			this.addComponent(topLine);
-			
-			loading = new Label("Loading Contracts ...");
-			topLine.addComponent(loading);
-			topLine.setComponentAlignment(loading, Alignment.MIDDLE_LEFT);
-			
-			Button flush = new Button("Flush Cache");
-			topLine.addComponent(flush);
-			topLine.setComponentAlignment(flush, Alignment.MIDDLE_RIGHT);
-			flush.addClickListener(l -> AcceloCache.getInstance().flushCache());
 			
 			
 
@@ -146,11 +134,28 @@ public class CompanyView extends VerticalLayout implements View
 
 			this.grid.setDataProvider(contractProvider);
 
-			this.addComponent(createFilter());
+			this.addComponent(createUserFilter());
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 1);
 
 			grid.setColumnResizeMode(ColumnResizeMode.SIMPLE);
+			
+			
+			HorizontalLayout bottomLine = new HorizontalLayout();
+			bottomLine.setWidth("100%");
+			this.addComponent(bottomLine);
+
+			loading = new Label("Loading Contracts ...");
+			bottomLine.addComponent(loading);
+			bottomLine.setComponentAlignment(loading, Alignment.MIDDLE_LEFT);
+
+			Button flush = new Button("Flush Cache");
+			bottomLine.addComponent(flush);
+			bottomLine.setComponentAlignment(flush, Alignment.MIDDLE_RIGHT);
+			flush.addClickListener(l -> { AcceloCache.getInstance().flushCache(); contractProvider.refreshAll();});
+	
+			
+	
 
 			logger.error("Finished.");
 
@@ -159,16 +164,20 @@ public class CompanyView extends VerticalLayout implements View
 
 	}
 
-	private Component createFilter()
+	/**
+	 * Create a grid filter to allow the user to search through the list of contracts.
+	 * @return
+	 */
+	private Component createUserFilter()
 	{
 		HorizontalLayout layout = new HorizontalLayout();
 		layout.setWidth("100%");
 		Button clear = new Button("X");
-		clear.addClickListener(l -> clearFilter());
+		clear.addClickListener(l -> clearUserFilter());
 
 		layout.addComponent(clear);
 		filter = new TextField();
-		filter.addValueChangeListener(l -> setFilter());
+		filter.addValueChangeListener(l -> setUserFilter());
 		filter.setWidth("100%");
 		layout.addComponent(filter);
 		layout.setExpandRatio(filter, 1);
@@ -179,17 +188,23 @@ public class CompanyView extends VerticalLayout implements View
 
 	}
 
-	private void clearFilter()
+	private void clearUserFilter()
 	{
 		filter.clear();
 		contractProvider.refreshAll();
 	}
 
-	private void setFilter()
+	private void setUserFilter()
 	{
 		contractProvider.refreshAll();
 	}
 
+	/**
+	 * Match any company thats name contains the filter expression typed by the user.
+	 * @param contractLine
+	 * @param filter
+	 * @return
+	 */
 	private boolean filterContracts(ContractLine contractLine, String filter)
 	{
 		return contractLine.getCompanyName().toLowerCase().contains(filter.toLowerCase());
@@ -217,6 +232,7 @@ public class CompanyView extends VerticalLayout implements View
 				
 				// dev optimisation.
 				AcceloFilter filter = new AcceloFilter();
+				filter.limit(300);
 				filter.where(new Eq("against_id", 3787));
 				contracts = new ContractDao().getByFilter(filter);
 

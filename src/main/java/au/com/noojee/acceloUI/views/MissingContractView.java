@@ -1,6 +1,11 @@
 package au.com.noojee.acceloUI.views;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,12 +13,20 @@ import org.apache.logging.log4j.Logger;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
-import com.vaadin.server.VaadinSession;
 import com.vaadin.shared.ui.grid.ColumnResizeMode;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
+
+import au.com.noojee.acceloapi.dao.ContractDao;
+import au.com.noojee.acceloapi.dao.TicketDao;
+import au.com.noojee.acceloapi.entities.Contract;
+import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.filter.expressions.AfterOrEq;
+import au.com.noojee.acceloapi.filter.expressions.Before;
+import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 /**
  * Show all companies that have been active in the last two months (i.e. a ticket raised) that don't have a contract.
@@ -65,70 +78,78 @@ public class MissingContractView extends VerticalLayout implements View // , Sub
 
 			grid = new Grid<>();
 
-//			// This list may be empty but if it is the loadCache will background
-//			// fill it.
-//			List<Contract> contract = Cache.getCacheSingleton().getContracts();
-//			contractLines = contract.stream().map(e -> {
-//				return e.getContractLine();
-//			}).collect(Collectors.toList());
-//
-//			contractLines = new ArrayList<>();
-//			contractProvider = new ListDataProvider<>(contractLines);
-//			this.grid.setDataProvider(contractProvider);
-//
-//			Cache.getCacheSingleton().loadCache();
-//			Cache.getCacheSingleton().subscribe(this);
-//
-//			grid.setSizeFull();
-//			grid.addColumn(ContractLine::getCompanyName).setCaption("Company").setExpandRatio(1);
-//			grid.addColumn(ContractLine::getContractTitle).setCaption("Contract");
-//			grid.addColumn(ContractLine::getDateStarted, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Start");
-//			grid.addColumn(ContractLine::getDateExpires, new LocalDateRenderer("dd/MM/yyyy")).setCaption("End");
-//			grid.addColumn(contractLine -> Formatters.format(contractLine.getContractValue())).setCaption("Value")
-//					.setStyleGenerator(contractLine -> "align-right");
-//
-//			grid.addColumn(contractLine -> Formatters.format(contractLine.getRemainingValue())).setCaption("Remaining")
-//					.setStyleGenerator(contractLine -> "align-right");
-//
-//			// grid.addColumn(contract ->
-//			// formatDuration(contract.getUnassignedWork())).setCaption("Unassigned")
-//			// .setStyleGenerator(contract -> "align-right");
-//
-//			grid.addColumn(contractLine -> contractLine.getUnassignedTicketCount()).setCaption("Unassigned")
-//					.setStyleGenerator(contractLine -> "align-right");
-//
-//			grid.addComponentColumn(contractLine -> new Button("View", e -> UI.getCurrent().getNavigator()
-//					.navigateTo(TicketView.VIEW_NAME + "/" + contractLine.getContract().getId())));
-//
-//			grid.addColumn(contract -> Formatters.format(contract.getMtdWork())).setCaption("MTD Work")
-//					.setStyleGenerator(contract -> "align-right");
-//
-//			grid.addColumn(contract -> Formatters.format(contract.getLastMonthWork())).setCaption("Last Month Work")
-//					.setStyleGenerator(contract -> "align-right");
-//
-//			grid.addComponentColumn(contract -> new Button("Refresh", e -> contract.refresh()));
+
+			contractLines = new ArrayList<>();
+			contractProvider = new ListDataProvider<>(contractLines);
+			this.grid.setDataProvider(contractProvider);
+
+			grid.setSizeFull();
+			grid.addColumn(MissingContractLine::getCompanyName).setCaption("Company").setExpandRatio(1);
 
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 1);
 
 			grid.setColumnResizeMode(ColumnResizeMode.SIMPLE);
+			
+			loadData();
 
 			logger.error("Finished.");
 		}
 
 	}
 
-	class MYUI
+	private void loadData()
 	{
-		UI ui;
-		VaadinSession session;
+		LocalDate now = LocalDate.now();
+		
+		LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
+				
+		// Find the list of tickets that are not assigned to a contract in the last two months.
+		AcceloFilter filter = new AcceloFilter();
+		filter.where(new Eq("contract", 0).and(new AfterOrEq("date_submitted", lastMonth)));
+		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
+		
+		// dedup the list based on the company
+		int[] companyIds = unassignedTickets.stream().mapToInt(ticket -> { return ticket.getCompanyId();} ).distinct().toArray();
+		
+		// create a list of tickets for each company
+		Map<Integer, List<Ticket>> ticketMap = new HashMap<>();
 
-		MYUI()
+		// build a map of tickets for each company.
+		unassignedTickets.stream().forEach(ticket -> { 
+			List<Ticket> tickets = ticketMap.get(ticket.getCompanyId());
+			if (tickets == null)
+				tickets = new ArrayList<>();
+			tickets.add(ticket);
+			ticketMap.put(ticket.getCompanyId(), tickets);
+		} );
+		
+		
+		// Now check that each of those companies has an active contract.
+		for (int companyId : companyIds)
 		{
-			this.ui = UI.getCurrent();
-			this.session = VaadinSession.getCurrent();
+			// find the first/last date for the tickets we have
+			
+			filter = new AcceloFilter();
+	//		filter.where(new Eq("company", companyId).and(new Before("start_date", )));
+			
+			List<Contract> companies = new ContractDao().getByFilter(filter);
+			
 		}
+		
+		
+//		contractLines = contract.stream().map(e -> {
+//			return e.getContractLine();
+//		}).collect(Collectors.toList());
+//		
+//		
+//		AcceloFilter filter = new AcceloFilter();
+//		filter.where(new Eq("contract", 0).and(new Eq("company", this.contract.getCompanyId())));
+//		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
+//		
+	
 
+		
 	}
 
 	/*

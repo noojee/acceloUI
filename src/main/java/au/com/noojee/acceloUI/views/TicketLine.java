@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import au.com.noojee.acceloapi.AcceloException;
+import au.com.noojee.acceloapi.dao.CompanyDao;
 import au.com.noojee.acceloapi.dao.StaffDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Contact;
@@ -70,6 +71,11 @@ public class TicketLine implements Comparable<TicketLine>
 		}
 
 		return contactName;
+	}
+	
+	String getCompanyName()
+	{
+		return new CompanyDao().getById(ticket.getCompanyId()).getName();
 	}
 	
 	/**
