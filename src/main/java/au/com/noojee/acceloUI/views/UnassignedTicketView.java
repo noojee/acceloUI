@@ -27,10 +27,9 @@ import com.vaadin.ui.renderers.LocalDateRenderer;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.filter.AcceloCache;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.filter.expressions.After;
-import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 /**
  * Show all companies with a retainer.
@@ -118,16 +117,14 @@ public class UnassignedTicketView extends VerticalLayout implements View
 	private List<Ticket> getTickets() throws AcceloException
 	{
 		// get all unassigned tickets
-		LocalDate now = LocalDate.now();
+		//LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
 
-		LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
-
-		AcceloFilter filter = new AcceloFilter();
+		AcceloFilter<Ticket> filter = new AcceloFilter<>();
 		filter.limit(50);
 
 		// Add all tickets which belong to the company but haven't been
 		// assigned.
-		filter.where(new Eq("contract", "0").and(new After("date_started", LocalDate.of(2017, 03, 01))));
+		filter.where(filter.eq(Ticket_.contract, 0).and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
 
 		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
 

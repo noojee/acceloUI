@@ -14,8 +14,8 @@ import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Contact;
 import au.com.noojee.acceloapi.entities.Staff;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 public class TicketLine implements Comparable<TicketLine>
 {
@@ -143,8 +143,8 @@ public class TicketLine implements Comparable<TicketLine>
 	{
 		try
 		{
-			AcceloFilter filter = new AcceloFilter();
-			filter.where(new Eq("id", ticket.getId()));
+			AcceloFilter<Ticket> filter = new AcceloFilter<>();
+			filter.where(filter.eq(Ticket_.id, ticket.getId()));
 			filter.refreshCache();
 
 			List<Ticket> tickets = new TicketDao().getByFilter(filter);

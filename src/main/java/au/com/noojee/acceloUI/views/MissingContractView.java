@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,17 +15,12 @@ import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.shared.ui.grid.ColumnResizeMode;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Label;
-import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 
-import au.com.noojee.acceloapi.dao.ContractDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
-import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.filter.expressions.AfterOrEq;
-import au.com.noojee.acceloapi.filter.expressions.Before;
-import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 /**
  * Show all companies that have been active in the last two months (i.e. a ticket raised) that don't have a contract.
@@ -48,12 +42,8 @@ public class MissingContractView extends VerticalLayout implements View // , Sub
 
 	private Label loading;
 
-	private UI ui;
-
 	public MissingContractView()
 	{
-
-		this.ui = UI.getCurrent();
 	}
 
 	@Override
@@ -105,8 +95,8 @@ public class MissingContractView extends VerticalLayout implements View // , Sub
 		LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
 				
 		// Find the list of tickets that are not assigned to a contract in the last two months.
-		AcceloFilter filter = new AcceloFilter();
-		filter.where(new Eq("contract", 0).and(new AfterOrEq("date_submitted", lastMonth)));
+		AcceloFilter<Ticket> filter = new AcceloFilter<>();
+		filter.where(filter.eq(Ticket_.contract, 0).and(filter.afterOrEq(Ticket_.date_submitted, lastMonth)));
 		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
 		
 		// dedup the list based on the company
@@ -126,14 +116,14 @@ public class MissingContractView extends VerticalLayout implements View // , Sub
 		
 		
 		// Now check that each of those companies has an active contract.
-		for (int companyId : companyIds)
+	//	for (int companyId : companyIds)
 		{
 			// find the first/last date for the tickets we have
 			
-			filter = new AcceloFilter();
+			filter = new AcceloFilter<>();
 	//		filter.where(new Eq("company", companyId).and(new Before("start_date", )));
 			
-			List<Contract> companies = new ContractDao().getByFilter(filter);
+			// List<Contract> companies = new ContractDao().getByFilter(filter);
 			
 		}
 		

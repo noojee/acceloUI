@@ -274,6 +274,16 @@ public class SMTPServerSetting
 		}
 	}
 
+	public String getBounceEmailAddress()
+	{
+		return bounceEmailAddress;
+	}
+
+	public void setBounceEmailAddress(String bounceEmailAddress)
+	{
+		this.bounceEmailAddress = bounceEmailAddress;
+	}
+
 	/**
 	 * Helper class to store an emailAddress and the Address Type (To, BCC, CC).
 	 *

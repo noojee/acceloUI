@@ -36,11 +36,10 @@ import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.entities.meta.AgainstType_;
+import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.filter.AcceloCache;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.filter.expressions.After;
-import au.com.noojee.acceloapi.filter.expressions.Against;
-import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 /**
  * Show all companies with a retainer.
@@ -190,12 +189,12 @@ public class TicketView extends VerticalLayout implements View
 		// CONSIDER restricting the date range.
 		List<Ticket> tickets = new TicketDao().getByContract(contract);
 
-		AcceloFilter filter = new AcceloFilter();
+		AcceloFilter<Ticket> filter = new AcceloFilter<>();
 
 		// Add all tickets which belong to the company but haven't been
 		// assigned.
-		filter.where(new Against("company", contract.getCompanyId()).and(new Eq("contract", "0"))
-				.and(new After("date_started", LocalDate.of(2017, 03, 01))));
+		filter.where(filter.against(AgainstType_.company, contract.getCompanyId()).and(filter.eq(Ticket_.contract, 0))
+				.and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
 
 		tickets.addAll(new TicketDao().getByFilter(filter));
 

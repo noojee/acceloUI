@@ -28,9 +28,9 @@ import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.Formatters;
 import au.com.noojee.acceloapi.dao.ContractDao;
 import au.com.noojee.acceloapi.entities.Contract;
+import au.com.noojee.acceloapi.entities.meta.AgainstType_;
 import au.com.noojee.acceloapi.filter.AcceloCache;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.filter.expressions.Eq;
 
 /**
  * Show all companies with a retainer.
@@ -231,9 +231,9 @@ public class CompanyView extends VerticalLayout implements View
 				// contracts = new ContractDao().getActiveContracts();
 				
 				// dev optimisation.
-				AcceloFilter filter = new AcceloFilter();
+				AcceloFilter<Contract> filter = new AcceloFilter<>();
 				filter.limit(300);
-				filter.where(new Eq("against_id", 3787));
+				filter.where(filter.against(AgainstType_.company, 3787));
 				contracts = new ContractDao().getByFilter(filter);
 
 				List<ContractLine> lines = contracts.parallelStream().map(c -> {
