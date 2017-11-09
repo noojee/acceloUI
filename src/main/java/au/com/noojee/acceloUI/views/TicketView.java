@@ -119,53 +119,58 @@ public class TicketView extends VerticalLayout implements View
 
 			logger.error("Start fetch Tickets");
 
-			new Thread(() -> {
-
-				this.loadCount = 0;
-				ticketLines.clear();
-				updateLoading("Loading");
-
-				try
-				{
-					if (contract != null)
-					{
-						List<Ticket> tickets = getTickets(contract);
-
-						List<TicketLine> lines = tickets.parallelStream().map(t -> {
-							updateLoading("Loading " + this.loadCount++);
-							TicketLine l = new TicketLine(t);
-							// force some caching.
-							l.getAssignee();
-							l.getBillable();
-							l.getNonBillable();
-							l.isFullyApproved();
-							l.getContact();
-							l.isOpen();
-							return l;
-						}).collect(Collectors.toList());
-
-						ticketLines.addAll(lines.stream().sorted().collect(Collectors.toList()));
-
-					}
-
-					ui.access(() -> {
-						ticketProvider.refreshAll();
-					});
-					updateLoading("Load Complete");
-
-					loadWork();
-
-				}
-				catch (NumberFormatException | AcceloException e)
-				{
-					logger.error(e, e);
-				}
-			}).start();
+			ticketLoader(contract);
 
 		}
 		else
 			updateLoading("No Data found.");
 
+	}
+
+	private void ticketLoader(Contract contract)
+	{
+		new Thread(() -> {
+
+			this.loadCount = 0;
+			ticketLines.clear();
+			updateLoading("Loading");
+
+			try
+			{
+				if (contract != null)
+				{
+					List<Ticket> tickets = getTickets(contract);
+
+					List<TicketLine> lines = tickets.parallelStream().map(t -> {
+						updateLoading("Loading " + this.loadCount++);
+						TicketLine l = new TicketLine(t);
+						// force some caching.
+						l.getAssignee();
+						l.getBillable();
+						l.getNonBillable();
+						l.isFullyApproved();
+						l.getContact();
+						l.isOpen();
+						return l;
+					}).collect(Collectors.toList());
+
+					ticketLines.addAll(lines.stream().sorted().collect(Collectors.toList()));
+
+				}
+
+				ui.access(() -> {
+					ticketProvider.refreshAll();
+				});
+				updateLoading("Load Complete");
+
+				loadWork();
+
+			}
+			catch (NumberFormatException | AcceloException e)
+			{
+				logger.error(e, e);
+			}
+		}).start();
 	}
 
 	private int validContractId(String contractIdParam)
@@ -196,7 +201,8 @@ public class TicketView extends VerticalLayout implements View
 		filter.where(filter.against(AgainstType_.company, contract.getCompanyId()).and(filter.eq(Ticket_.contract, 0))
 				.and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
 
-		tickets.addAll(new TicketDao().getByFilter(filter));
+		List<Ticket> unassigned = new TicketDao().getByFilter(filter);
+		tickets.addAll(unassigned);
 
 		return tickets;
 	}

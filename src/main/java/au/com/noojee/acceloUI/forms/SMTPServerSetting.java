@@ -252,11 +252,6 @@ public class SMTPServerSetting
 		this.useStartTLS = useStartTLS;
 	}
 
-	private boolean getUseStartTLS()
-	{
-		return this.useStartTLS;
-	}
-
 	private void addEmailAddress(final HtmlEmail email, final String firstAddress, final EmailAddressType firstType)
 			throws EmailException
 	{

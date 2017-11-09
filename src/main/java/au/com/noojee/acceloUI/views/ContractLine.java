@@ -42,7 +42,7 @@ class ContractLine implements Comparable<ContractLine>
 	Duration mtdWork; // The amount work done so far this month.
 	Duration lastMonthWork; // The amount of work done last month on this
 							// ticket.
-	private int unassignedTickets; // no. of unassigned tickets
+	// private int unassignedTickets; // no. of unassigned tickets
 
 	public ContractLine(Contract contract)
 	{

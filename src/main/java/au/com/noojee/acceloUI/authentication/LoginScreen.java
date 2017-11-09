@@ -18,7 +18,9 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloUI.authentication.oauth.AuthListener;
+import au.com.noojee.acceloUI.authentication.oauth.GoogleAuthorizer;
 import au.com.noojee.acceloUI.authentication.oauth.Person;
+import au.com.noojee.acceloUI.authentication.oauth.PersonFetcher;
 import au.com.noojee.acceloapi.dao.StaffDao;
 import au.com.noojee.acceloapi.entities.Staff;
 
@@ -116,7 +118,9 @@ public class LoginScreen extends CssLayout implements AuthListener<Person>
 		});
 		forgotPassword.addStyleName(ValoTheme.BUTTON_LINK);
 
-		//loginForm.addComponent(new GoogleAuthorizer<Person>(new PersonFetcher(this)));
+		PersonFetcher fetcher = new PersonFetcher(this);
+		GoogleAuthorizer<Person> authorizer = new GoogleAuthorizer<Person>(fetcher);
+		loginForm.addComponent(authorizer);
 
 		return loginForm;
 	}

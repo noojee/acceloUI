@@ -1,12 +1,15 @@
 package au.com.noojee.acceloUI.views;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.icons.VaadinIcons;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.shared.ui.ContentMode;
@@ -18,8 +21,10 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.MultiSelect;
 import com.vaadin.ui.Panel;
+import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.renderers.LocalDateRenderer;
+import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.Formatters;
@@ -42,8 +47,8 @@ public class ActivityView extends VerticalLayout implements View
 
 	static Logger logger = LogManager.getLogger();
 
-	Grid<ActivityLine> grid;
-	ListDataProvider<ActivityLine> ticketProvider;
+	private Grid<ActivityLine> grid;
+	private ListDataProvider<ActivityLine> activityProvider;
 	private List<ActivityLine> activityLines;
 
 	private Label loading;
@@ -58,6 +63,10 @@ public class ActivityView extends VerticalLayout implements View
 	private Label ticketContact = new Label();
 	private Label ticketStatus = new Label();
 	private Label ticketSubject = new Label();
+	
+	private TextField filter;
+
+
 
 
 	public ActivityView()
@@ -102,8 +111,8 @@ public class ActivityView extends VerticalLayout implements View
 
 					activityLines = activities.parallelStream().sorted().map(t -> new ActivityLine(t))
 							.collect(Collectors.toList());
-					ticketProvider = new ListDataProvider<>(activityLines);
-					this.grid.setDataProvider(ticketProvider);
+					activityProvider = new ListDataProvider<>(activityLines);
+					this.grid.setDataProvider(activityProvider);
 					
 					if (!activityLines.isEmpty())
 					{
@@ -140,6 +149,9 @@ public class ActivityView extends VerticalLayout implements View
 			
 			
 			this.addComponent(createTicketDetails());
+			
+			this.addComponent(createUserFilter());
+
 
 			grid = new Grid<>();
 			grid.setSelectionMode(Grid.SelectionMode.MULTI);
@@ -152,6 +164,19 @@ public class ActivityView extends VerticalLayout implements View
 
 			grid.addColumn(activityLine -> Formatters.format(activityLine.getBillable())).setCaption("Billable")
 					.setStyleGenerator(activityLine -> "align-right");
+			
+			grid.addComponentColumn(activityLine -> {
+				IconButton link = new IconButton("", VaadinIcons.ARROW_LEFT,
+						e -> changeBillable(activityLine));
+				
+				link.addStyleName(ValoTheme.BUTTON_SMALL);
+				link.addStyleName(ValoTheme.BUTTON_BORDERLESS);
+				boolean isBillable = activityLine.getBillable().getSeconds() > 0; 
+				link.setIcon(isBillable ? VaadinIcons.ARROW_CIRCLE_RIGHT : VaadinIcons.ARROW_LEFT);
+				link.setDescription(isBillable ? "Move to Non Billable" : "Move to Billable");
+				return link;
+			}).setWidth(80).setCaption("Move");
+
 
 			grid.addColumn(activityLine -> Formatters.format(activityLine.getNonBillable())).setCaption("NonBillable")
 					.setStyleGenerator(activityLine -> "align-right");
@@ -162,6 +187,12 @@ public class ActivityView extends VerticalLayout implements View
 			grid.addColumn(activityLine -> activityLine.isApproved()).setCaption("Approved");
 			
 			grid.addItemClickListener(l -> showActivity(l.getItem()));
+			
+			grid.addSelectionListener(event -> {
+				Optional<ActivityLine> oLine = event.getFirstSelectedItem();
+				if (!oLine.isPresent())
+					showActivity(null);
+				});
 
 			// grid.addComponentColumn(activityLine -> new Button("View", e
 			// -> UI.getCurrent().getNavigator()
@@ -190,6 +221,8 @@ public class ActivityView extends VerticalLayout implements View
 
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 2); // 2/3 of the screen.
+			
+
 			
 			Button delete = new Button("Delete");
 			delete.addClickListener(l -> deleteActivities());
@@ -221,16 +254,51 @@ public class ActivityView extends VerticalLayout implements View
 		}
 	}
 
+	private void changeBillable(ActivityLine activityLine)
+	{
+		Activity activity = activityLine.getActivity();
+		
+		boolean isBillable = activity.getBillable().getSeconds() > 0; 
+
+		if (isBillable)
+		{
+			activity.setNonBillable(activity.getBillable());
+			activity.setBillable(Duration.ofSeconds(0));
+		}
+		else
+		{
+			activity.setBillable(activity.getNonBillable());
+			activity.setNonBillable(Duration.ofSeconds(0));
+		}
+		
+		activity.setTimeAllocationId(0);
+		
+		new ActivityDao().replace(activity);
+		
+		this.activityProvider.refreshItem(activityLine);
+
+			
+	}
+
 	private void deleteActivities()
 	{
 		MultiSelect<ActivityLine> selections = this.grid.asMultiSelect();
 		
-		selections.getValue().stream().forEach(line -> {
+		
+		selections.getValue().parallelStream().forEach(line -> {
 
 			new ActivityDao().delete(line.getActivity());
+			this.activityLines.remove(line);
 		});
 		
+		// remove all selections as we have just deleted them.
+		selections.deselectAll();
+
+		this.activityProvider.refreshAll();
+		
 	}
+	
+	
 
 	private Component createTicketDetails()
 	{
@@ -256,10 +324,73 @@ public class ActivityView extends VerticalLayout implements View
 
 	private void showActivity(ActivityLine l)
 	{
+		if (l != null)
+		{
 		activityViewSubject.setValue("<b>Activity: " + l.getSubject() + "</b>");
 		activityViewDetails.setValue(l.getBody());
+		}
+		else
+		{
+			activityViewSubject.setValue("<b>Activity: None selected</b>");
+			activityViewDetails.setValue("");
+		}
 
 
 	}
+	
+	
+	/**
+	 * Create a grid filter to allow the user to search through the list of contracts.
+	 * @return
+	 */
+	private Component createUserFilter()
+	{
+		HorizontalLayout layout = new HorizontalLayout();
+		layout.setWidth("100%");
+		Button clear = new Button("X");
+		clear.addClickListener(l -> clearUserFilter());
+
+		layout.addComponent(clear);
+		filter = new TextField();
+		filter.addValueChangeListener(l -> setUserFilter());
+		filter.setWidth("100%");
+		layout.addComponent(filter);
+		layout.setExpandRatio(filter, 1);
+
+		
+
+		return layout;
+
+	}
+
+	private void clearUserFilter()
+	{
+		filter.clear();
+		activityProvider.refreshAll();
+	}
+
+	private void setUserFilter()
+	{
+		activityProvider.setFilter(activityLine -> filterActivities(activityLine, filter.getValue()));
+		
+		MultiSelect<ActivityLine> selections = this.grid.asMultiSelect();
+		
+		selections.deselectAll();
+		
+		activityProvider.refreshAll();
+	}
+
+	/**
+	 * Match any activites thats name contains the filter expression typed by the user.
+	 * @param contractLine
+	 * @param filter
+	 * @return
+	 */
+	private boolean filterActivities(ActivityLine activityLine, String filter)
+	{
+		return activityLine.getSubject().toLowerCase().contains(filter.toLowerCase());
+	}
+
+
 
 }

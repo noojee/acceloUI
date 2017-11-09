@@ -100,7 +100,7 @@ public class MissingContractView extends VerticalLayout implements View // , Sub
 		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
 		
 		// dedup the list based on the company
-		int[] companyIds = unassignedTickets.stream().mapToInt(ticket -> { return ticket.getCompanyId();} ).distinct().toArray();
+		// int[] companyIds = unassignedTickets.stream().mapToInt(ticket -> { return ticket.getCompanyId();} ).distinct().toArray();
 		
 		// create a list of tickets for each company
 		Map<Integer, List<Ticket>> ticketMap = new HashMap<>();

@@ -50,7 +50,6 @@ public class ExcelReport
 	private int ticketRowCount = 0;
 	private Workbook workbook;
 	private final Sheet ticketSheet;
-	private final String basePath = "/home/bsutton/Downloads";
 	private final CellStyle dateStyle;
 	private final CellStyle dollarStyle;
 	private final CellStyle dollarAndCentsStyle;

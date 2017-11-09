@@ -8,6 +8,7 @@ import com.vaadin.ui.HorizontalLayout;
 
 import au.com.noojee.acceloUI.about.AboutView;
 import au.com.noojee.acceloUI.views.ActivityView;
+import au.com.noojee.acceloUI.views.CleanupView;
 import au.com.noojee.acceloUI.views.CompanyView;
 import au.com.noojee.acceloUI.views.ErrorView;
 import au.com.noojee.acceloUI.views.Menu;
@@ -47,6 +48,7 @@ public class MainScreen extends HorizontalLayout
 		menu.addView(new TicketView(), TicketView.VIEW_NAME, TicketView.VIEW_NAME, VaadinIcons.TICKET);
 		menu.addView(new ActivityView(), ActivityView.VIEW_NAME, ActivityView.VIEW_NAME, VaadinIcons.HOURGLASS);
 		menu.addView(new UnassignedTicketView(), UnassignedTicketView.VIEW_NAME, UnassignedTicketView.VIEW_NAME, VaadinIcons.AMBULANCE);
+		menu.addView(new CleanupView(), CleanupView.VIEW_NAME, CleanupView.VIEW_NAME, VaadinIcons.CROSSHAIRS);
 		menu.addView(new AboutView(), AboutView.VIEW_NAME, AboutView.VIEW_NAME, VaadinIcons.INFO_CIRCLE);
 
 
