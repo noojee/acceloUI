@@ -29,17 +29,17 @@ import com.vaadin.ui.renderers.LocalDateRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloapi.AcceloException;
-import au.com.noojee.acceloapi.Formatters;
+import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.CompanyDao;
 import au.com.noojee.acceloapi.dao.ContractDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
-import au.com.noojee.acceloapi.entities.meta.AgainstType_;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
-import au.com.noojee.acceloapi.filter.AcceloCache;
+import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.util.Formatters;
 
 /**
  * Show all companies with a retainer.
@@ -198,7 +198,7 @@ public class TicketView extends VerticalLayout implements View
 
 		// Add all tickets which belong to the company but haven't been
 		// assigned.
-		filter.where(filter.against(AgainstType_.company, contract.getCompanyId()).and(filter.eq(Ticket_.contract, 0))
+		filter.where(filter.against(AgainstType.company, contract.getCompanyId()).and(filter.eq(Ticket_.contract, 0))
 				.and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
 
 		List<Ticket> unassigned = new TicketDao().getByFilter(filter);

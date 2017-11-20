@@ -25,10 +25,10 @@ import com.vaadin.ui.renderers.LocalDateRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloapi.AcceloException;
-import au.com.noojee.acceloapi.Formatters;
 import au.com.noojee.acceloapi.dao.ActivityDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.util.Formatters;
 
 /**
  * Show all companies with a retainer.

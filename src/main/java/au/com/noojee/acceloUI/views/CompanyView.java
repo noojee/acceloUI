@@ -25,12 +25,12 @@ import com.vaadin.ui.renderers.LocalDateRenderer;
 
 import au.com.noojee.acceloUI.reporting.ExportContractPeriodWindow;
 import au.com.noojee.acceloapi.AcceloException;
-import au.com.noojee.acceloapi.Formatters;
+import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.ContractDao;
 import au.com.noojee.acceloapi.entities.Contract;
-import au.com.noojee.acceloapi.entities.meta.AgainstType_;
-import au.com.noojee.acceloapi.filter.AcceloCache;
+import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.util.Formatters;
 
 /**
  * Show all companies with a retainer.
@@ -228,13 +228,15 @@ public class CompanyView extends VerticalLayout implements View
 			{
 				this.loadCount = 0;
 				updateLoading("Loading Contracts...", null);
-				// contracts = new ContractDao().getActiveContracts();
 				
 				// dev optimisation.
 				AcceloFilter<Contract> filter = new AcceloFilter<>();
 				filter.limit(300);
-				filter.where(filter.against(AgainstType_.company, 3787));
+				filter.where(filter.against(AgainstType.company, 3787));
 				contracts = new ContractDao().getByFilter(filter);
+				
+				// contracts = new ContractDao().getActiveContracts();
+				
 
 				List<ContractLine> lines = contracts.parallelStream().map(c -> {
 

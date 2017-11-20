@@ -10,6 +10,7 @@ import org.javamoney.moneta.Money;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.StaffDao;
 import au.com.noojee.acceloapi.entities.Activity;
+import au.com.noojee.acceloapi.entities.Activity.Standing;
 import au.com.noojee.acceloapi.entities.Staff;
 
 public class ActivityLine
@@ -36,7 +37,7 @@ public class ActivityLine
 	}
 
 	
-	public String getStanding()
+	public Standing getStanding()
 	{
 		return this.activity.getStanding();
 	}
@@ -98,6 +99,11 @@ public class ActivityLine
 	public Activity getActivity()
 	{
 		return this.activity;
+	}
+
+	public void setActivity(Activity newActivity)
+	{
+		this.activity = newActivity;
 	}
 
 }

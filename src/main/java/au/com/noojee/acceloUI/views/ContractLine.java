@@ -17,8 +17,8 @@ import au.com.noojee.acceloapi.dao.CompanyDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.Ticket;
-import au.com.noojee.acceloapi.entities.meta.AgainstType_;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
+import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
 
 class ContractLine implements Comparable<ContractLine>
@@ -132,7 +132,7 @@ class ContractLine implements Comparable<ContractLine>
 	{
 		
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
-		filter.where(filter.eq(Ticket_.contract, 0).and(filter.against(AgainstType_.company, this.contract.getCompanyId())));
+		filter.where(filter.eq(Ticket_.contract, 0).and(filter.against(AgainstType.company, this.contract.getCompanyId())));
 		List<Ticket> unassignedTickets = new TicketDao().getByFilter(filter);
 		
 		return unassignedTickets.size();

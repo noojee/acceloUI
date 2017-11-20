@@ -24,6 +24,7 @@ import au.com.noojee.acceloUI.authentication.BasicAccessControl;
 import au.com.noojee.acceloUI.authentication.LoginScreen;
 import au.com.noojee.acceloUI.authentication.LoginScreen.LoginListener;
 import au.com.noojee.acceloUI.main.Broadcaster.BroadcastListener;
+import au.com.noojee.acceloUI.util.JobService;
 import au.com.noojee.acceloapi.AcceloApi;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.AcceloSecret;
@@ -57,6 +58,8 @@ public class AcceloUI extends UI implements BroadcastListener
 		Broadcaster.register(this);
 		
 		new MailHogSettings();
+		
+		JobService.init(this);
 
 		//new GMailSettings();
 		

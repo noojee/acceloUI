@@ -22,11 +22,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.javamoney.moneta.Money;
 
 import au.com.noojee.acceloapi.AcceloException;
-import au.com.noojee.acceloapi.Formatters;
 import au.com.noojee.acceloapi.dao.InvoiceDao;
 import au.com.noojee.acceloapi.dao.StaffDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
-import au.com.noojee.acceloapi.entities.AcceloEntity;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Contact;
@@ -34,8 +32,10 @@ import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.ContractPeriod;
 import au.com.noojee.acceloapi.entities.Invoice;
 import au.com.noojee.acceloapi.entities.Staff;
-import au.com.noojee.acceloapi.entities.Status;
 import au.com.noojee.acceloapi.entities.Ticket;
+import au.com.noojee.acceloapi.entities.types.Status;
+import au.com.noojee.acceloapi.util.Conversions;
+import au.com.noojee.acceloapi.util.Formatters;
 
 /**
  * A very simple program that writes some data to an Excel file using the Apache
@@ -109,7 +109,7 @@ public class ExcelReport
 		cell.setCellValue("Contract Value: ");
 		cell.setCellStyle(boldStyle);
 		cell = row.createCell(columnCount++);
-		cell.setCellValue(AcceloEntity.asDouble(contract.getValue()));
+		cell.setCellValue(Conversions.asDouble(contract.getValue()));
 		cell.setCellType(CellType.NUMERIC);
 		cell.setCellStyle(dollarStyle);
 
@@ -174,10 +174,10 @@ public class ExcelReport
 			cell = row.createCell(columnCount++);
 			cell.setCellValue(ticket.getId());
 			cell = row.createCell(columnCount++);
-			cell.setCellValue(AcceloEntity.toDate(ticket.getDateOpened()));
+			cell.setCellValue(Conversions.toDate(ticket.getDateOpened()));
 			cell.setCellStyle(dateStyle);
 			cell = row.createCell(columnCount++);
-			cell.setCellValue(AcceloEntity.toDate(ticket.getDateClosed()));
+			cell.setCellValue(Conversions.toDate(ticket.getDateClosed()));
 			cell.setCellStyle(dateStyle);
 			cell = row.createCell(columnCount++);
 			cell.setCellValue(getAssignee(ticket));
@@ -231,7 +231,7 @@ public class ExcelReport
 		
 		TicketDao daoTicket = new TicketDao();
 
-		List<Activity> activities = daoTicket.getActivities(ticket);
+		List<Activity> activities = daoTicket.getActivities(ticket, true);
 
 		int rowCount = 0;
 		int columnCount = 0;
@@ -253,7 +253,7 @@ public class ExcelReport
 		activitySheet.setColumnWidth(columnCount - 1, PixelUtil.pixel2WidthUnits(80));
 
 		cell = row.createCell(columnCount++);
-		cell.setCellValue(AcceloEntity.toDate(ticket.getDateOpened()));
+		cell.setCellValue(Conversions.toDate(ticket.getDateOpened()));
 		cell.setCellStyle(dateStyle);
 
 		cell = row.createCell(columnCount++);
@@ -261,7 +261,7 @@ public class ExcelReport
 		cell.setCellStyle(boldStyle);
 		activitySheet.setColumnWidth(columnCount - 1, PixelUtil.pixel2WidthUnits(80));
 		cell = row.createCell(columnCount++);
-		cell.setCellValue(AcceloEntity.toDate(ticket.getDateClosed()));
+		cell.setCellValue(Conversions.toDate(ticket.getDateClosed()));
 		cell.setCellStyle(dateStyle);
 
 		cell = row.createCell(columnCount++);
@@ -393,17 +393,18 @@ public class ExcelReport
 		for (Activity activity : activities)
 		{
 
-			foundActivities = true;
 
 			// Only output the activity if some time has been lodged against it.
 			if (!activity.getBillable().isZero() || !activity.getNonBillable().isZero())
 			{
+				foundActivities = true;
+
 				row = activitySheet.createRow(rowCount++);
 
 				columnCount = 0;
 
 				cell = row.createCell(columnCount++);
-				cell.setCellValue(AcceloEntity.toDate(activity.getDateCreated()));
+				cell.setCellValue(Conversions.toDate(activity.getDateCreated()));
 				cell.setCellStyle(dateStyle);
 
 				// Subject value

@@ -60,7 +60,7 @@ public class SMTPServerSetting
 	 */
 	private Boolean useSSL = false;
 
-	private boolean useStartTLS = false;
+//	private boolean useStartTLS = false;
 
 	private static SMTPServerSetting self;
 
@@ -246,12 +246,12 @@ public class SMTPServerSetting
 		email.send();
 
 	}
-
-	public void setUseStartTLS(boolean useStartTLS)
-	{
-		this.useStartTLS = useStartTLS;
-	}
-
+//
+//	public void setUseStartTLS(boolean useStartTLS)
+//	{
+//		this.useStartTLS = useStartTLS;
+//	}
+//
 	private void addEmailAddress(final HtmlEmail email, final String firstAddress, final EmailAddressType firstType)
 			throws EmailException
 	{
