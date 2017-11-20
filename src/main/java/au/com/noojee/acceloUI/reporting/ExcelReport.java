@@ -33,7 +33,7 @@ import au.com.noojee.acceloapi.entities.ContractPeriod;
 import au.com.noojee.acceloapi.entities.Invoice;
 import au.com.noojee.acceloapi.entities.Staff;
 import au.com.noojee.acceloapi.entities.Ticket;
-import au.com.noojee.acceloapi.entities.types.Status;
+import au.com.noojee.acceloapi.entities.types.TicketStatus;
 import au.com.noojee.acceloapi.util.Conversions;
 import au.com.noojee.acceloapi.util.Formatters;
 
@@ -188,7 +188,7 @@ public class ExcelReport
 			cell = row.createCell(columnCount++);
 			cell.setCellValue(ticket.getTitle());
 			cell = row.createCell(columnCount++);
-			Status status = ticket.getStatus();
+			TicketStatus status = ticket.getStatus();
 			cell.setCellValue(status.getTitle());
 
 			cell = row.createCell(columnCount++);
@@ -290,7 +290,7 @@ public class ExcelReport
 
 		// Status value
 		cell = row.createCell(columnCount++);
-		Status status = ticket.getStatus();
+		TicketStatus status = ticket.getStatus();
 		cell.setCellValue(status.getTitle());
 
 		// Billable

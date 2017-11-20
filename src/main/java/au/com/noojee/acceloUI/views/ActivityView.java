@@ -38,7 +38,6 @@ import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.ActivityDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
-import au.com.noojee.acceloapi.entities.Activity.Standing;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.util.Formatters;
 
