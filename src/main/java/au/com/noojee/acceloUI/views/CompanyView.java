@@ -231,7 +231,7 @@ public class CompanyView extends VerticalLayout implements View
 				
 				// dev optimisation.
 				AcceloFilter<Contract> filter = new AcceloFilter<>();
-				filter.limit(300);
+				filter.limit(6);
 				filter.where(filter.against(AgainstType.company, 3787));
 				contracts = new ContractDao().getByFilter(filter);
 				

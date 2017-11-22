@@ -120,7 +120,7 @@ public class UnassignedTicketView extends VerticalLayout implements View
 		//LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
 
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
-		filter.limit(50);
+		filter.limit(1);
 
 		// Add all tickets which belong to the company but haven't been
 		// assigned.
