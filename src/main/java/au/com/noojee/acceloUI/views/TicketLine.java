@@ -119,12 +119,12 @@ public class TicketLine implements Comparable<TicketLine>
 		return ticket.isOpen();
 	}
 
-	public boolean isFullyApproved()
+	public boolean isWorkApproved()
 	{
 		boolean approved = false;
 		try
 		{
-			approved = new TicketDao().isFullyApproved(ticket);
+			approved = new TicketDao().isWorkApproved(ticket);
 		}
 		catch (AcceloException e)
 		{

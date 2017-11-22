@@ -148,7 +148,7 @@ public class TicketView extends VerticalLayout implements View
 						l.getAssignee();
 						l.getBillable();
 						l.getNonBillable();
-						l.isFullyApproved();
+						l.isWorkApproved();
 						l.getContact();
 						l.isOpen();
 						return l;
@@ -262,7 +262,7 @@ public class TicketView extends VerticalLayout implements View
 			grid.addColumn(TicketLine::getAssignee).setCaption("Engineer").setWidth(120);
 			grid.addColumn(TicketLine::getContact).setCaption("Contact").setWidth(160);
 			grid.addColumn(TicketLine::isOpen).setCaption("Open");
-			grid.addColumn(TicketLine::isFullyApproved).setCaption("Approved");
+			grid.addColumn(TicketLine::isWorkApproved).setCaption("Approved");
 
 			grid.addComponentColumn(ticketLine -> {
 				IconButton link = new IconButton("Attach To Contract", VaadinIcons.LINK,
