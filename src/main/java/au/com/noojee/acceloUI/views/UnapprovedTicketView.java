@@ -29,13 +29,13 @@ import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
+import au.com.noojee.acceloapi.entities.meta.fieldTypes.OrderByField.Order;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
 
 /**
  * Show all companies with a retainer.
  * 
  * @author bsutton
- *
  */
 public class UnapprovedTicketView extends VerticalLayout implements View
 {
@@ -82,62 +82,93 @@ public class UnapprovedTicketView extends VerticalLayout implements View
 
 		logger.error("Start fetch Tickets");
 
-		new Thread(() -> {
-
-			this.loadCount = 0;
-			ticketLines.clear();
-			updateLoading("Loading");
-
-			try
+		new Thread(() ->
 			{
-				List<Ticket> tickets = getTickets();
 
-				List<TicketLine> lines = tickets.parallelStream().map(t -> {
-					updateLoading("Loading " + this.loadCount++);
-					TicketLine l = new TicketLine(t);
-					return l;
-				}).collect(Collectors.toList());
+				this.loadCount = 0;
+				ticketLines.clear();
+				updateLoading("Loading");
 
-				ticketLines.addAll(lines.stream().sorted().collect(Collectors.toList()));
+				try
+				{
+					List<Ticket> tickets = getTickets();
 
-				ui.access(() -> {
-					ticketProvider.refreshAll();
-				});
-				updateLoading("Load Complete");
+					List<TicketLine> lines = tickets.parallelStream().map(t ->
+						{
+							updateLoading("Loading " + this.loadCount++);
+							TicketLine l = new TicketLine(t);
+							return l;
+						}).collect(Collectors.toList());
 
-			}
-			catch (NumberFormatException | AcceloException e)
-			{
-				logger.error(e, e);
-			}
-		}).start();
+					ticketLines.addAll(lines.stream().sorted((t1, t2) -> Long.compare(t2.getId(), t1.getId())).collect(Collectors.toList()));
+
+					ui.access(() ->
+						{
+							ticketProvider.refreshAll();
+						});
+					updateLoading("Load Complete");
+
+				}
+				catch (NumberFormatException | AcceloException e)
+				{
+					logger.error(e, e);
+				}
+			}).start();
 
 	}
 
 	private List<Ticket> getTickets() throws AcceloException
 	{
 		// get all unapproved tickets
-		//LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
+		// LocalDate lastMonth = now.minusMonths(1).withDayOfMonth(1);
+
+		List<Ticket> unapproved = new ArrayList<>();
+
+		boolean foundSome = false;
 
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
-		filter.limit(50);
+		filter.limit(1);
 
-		// Add all tickets which belong to the company but haven't been
-		// assigned.
-		filter.where(filter.eq(Ticket_.contract, 0).and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
+		int offset = 0;
 
-		List<Ticket> unapprovedTickets = new TicketDao().getByFilter(filter);
+		while (unapproved.size() < 50)
+		{
 
-		return unapprovedTickets;
+			filter.offset(offset);
+
+			// All closed tickets
+			filter.where(filter.eq(Ticket_.contract, 0).and(filter.eq(Ticket_.standing, Ticket.Standing.closed))
+					.and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))))
+					.orderBy(Ticket_.id, Order.DESC);
+			
+			filter.showHashCode();
+
+			// filter.where(filter.eq(Activity_.against_type, AgainstType.ticket).and(Activity_.));
+			TicketDao daoTicket = new TicketDao();
+
+			List<Ticket> closedTickets = daoTicket.getByFilter(filter);
+
+			if (closedTickets.isEmpty() || offset == 2)
+				break; // no more closed tickets.
+
+			// Now just those that have unapproved work.
+			unapproved.addAll(closedTickets.parallelStream().filter(ticket -> daoTicket.isWorkApproved(ticket))
+					.collect(Collectors.toList()));
+
+			offset += 1;
+		}
+		
+
+
+		return unapproved;
 	}
-
-	
 
 	void updateLoading(String message)
 	{
-		ui.access(() -> {
-			loading.setValue(message);
-		});
+		ui.access(() ->
+			{
+				loading.setValue(message);
+			});
 	}
 
 	void initialiseGrid() throws AcceloException
@@ -166,21 +197,22 @@ public class UnapprovedTicketView extends VerticalLayout implements View
 					.setWidth(120);
 			grid.addColumn(TicketLine::getAssignee).setCaption("Engineer").setWidth(120);
 			// grid.addColumn(TicketLine::getContact).setCaption("Contact").setWidth(160);
-//
-//			grid.addComponentColumn(ticketLine -> {
-//				IconButton link = new IconButton("Attach To Contract", VaadinIcons.LINK,
-//						e -> attachToContract(ticketLine));
-//				link.setEnabled(!ticketLine.isAttached());
-//				if (!ticketLine.isAttached())
-//				{
-//					link.setStyleName(ValoTheme.BUTTON_FRIENDLY);
-//				}
-//				return link;
-//			}).setWidth(80).setCaption("Link");
+			//
+			// grid.addComponentColumn(ticketLine -> {
+			// IconButton link = new IconButton("Attach To Contract", VaadinIcons.LINK,
+			// e -> attachToContract(ticketLine));
+			// link.setEnabled(!ticketLine.isAttached());
+			// if (!ticketLine.isAttached())
+			// {
+			// link.setStyleName(ValoTheme.BUTTON_FRIENDLY);
+			// }
+			// return link;
+			// }).setWidth(80).setCaption("Link");
 
-			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e -> {
-				UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
-			})).setWidth(80).setCaption("Details");
+			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e ->
+				{
+					UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
+				})).setWidth(80).setCaption("Details");
 
 			// grid.addComponentColumn(ticketLine -> new Button("Refresh", e -> ticketLine.refresh()));
 
@@ -207,32 +239,27 @@ public class UnapprovedTicketView extends VerticalLayout implements View
 	{
 		AcceloCache.getInstance().flushCache();
 		/*
-		 * // Flush the tickets and activities current on display.
-		 * 
-		 * for ( TicketLine line : ticketLines) { Ticket ticket = line.ticket;
-		 * 
-		 * AcceloCache.getInstance().flushEntities(new
-		 * TicketDao().getActivities(ticket));
+		 * // Flush the tickets and activities current on display. for ( TicketLine line : ticketLines) { Ticket ticket
+		 * = line.ticket; AcceloCache.getInstance().flushEntities(new TicketDao().getActivities(ticket));
 		 * AcceloCache.getInstance().flushEntity(ticket); }
 		 */
 		ticketProvider.refreshAll();
 	}
 
-	
-//	private void attachToContract(TicketLine ticketLine)
-//	{
-//		try
-//		{
-//			Ticket ticket = ticketLine.ticket;
-//			ticket.setContractId(this.currentContractId);
-//			new TicketDao().update(ticket);
-//			this.ticketProvider.refreshItem(ticketLine);
-//		}
-//		catch (AcceloException e)
-//		{
-//			Notification.show("Failed to update ticket", e.getMessage(), Notification.Type.ERROR_MESSAGE);
-//		}
-//	}
+	// private void attachToContract(TicketLine ticketLine)
+	// {
+	// try
+	// {
+	// Ticket ticket = ticketLine.ticket;
+	// ticket.setContractId(this.currentContractId);
+	// new TicketDao().update(ticket);
+	// this.ticketProvider.refreshItem(ticketLine);
+	// }
+	// catch (AcceloException e)
+	// {
+	// Notification.show("Failed to update ticket", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+	// }
+	// }
 
 	String formatDuration(Duration duration)
 	{
