@@ -12,9 +12,9 @@ import au.com.noojee.acceloUI.views.CleanupView;
 import au.com.noojee.acceloUI.views.CompanyView;
 import au.com.noojee.acceloUI.views.ErrorView;
 import au.com.noojee.acceloUI.views.Menu;
+import au.com.noojee.acceloUI.views.TicketFilterView;
 import au.com.noojee.acceloUI.views.TicketView;
-import au.com.noojee.acceloUI.views.UnapprovedTicketView;
-import au.com.noojee.acceloUI.views.UnassignedTicketView;
+import au.com.noojee.acceloUI.views.TicketFilterView;
 
 /**
  * Content of the UI when the user is logged in.
@@ -48,8 +48,7 @@ public class MainScreen extends HorizontalLayout
 		menu.addView(companyView, CompanyView.VIEW_NAME, CompanyView.VIEW_NAME, VaadinIcons.BUILDING);
 		menu.addView(new TicketView(), TicketView.VIEW_NAME, TicketView.VIEW_NAME, VaadinIcons.TICKET);
 		menu.addView(new ActivityView(), ActivityView.VIEW_NAME, ActivityView.VIEW_NAME, VaadinIcons.HOURGLASS);
-		menu.addView(new UnassignedTicketView(), UnassignedTicketView.VIEW_NAME, UnassignedTicketView.VIEW_NAME, VaadinIcons.AMBULANCE);
-		menu.addView(new UnapprovedTicketView(), UnapprovedTicketView.VIEW_NAME, UnapprovedTicketView.VIEW_NAME, VaadinIcons.ALARM);
+		menu.addView(new TicketFilterView(), TicketFilterView.VIEW_NAME, TicketFilterView.VIEW_NAME, VaadinIcons.AMBULANCE);
 		menu.addView(new CleanupView(), CleanupView.VIEW_NAME, CleanupView.VIEW_NAME, VaadinIcons.CROSSHAIRS);
 		menu.addView(new AboutView(), AboutView.VIEW_NAME, AboutView.VIEW_NAME, VaadinIcons.INFO_CIRCLE);
 

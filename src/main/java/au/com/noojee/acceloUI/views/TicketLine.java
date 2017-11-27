@@ -32,6 +32,10 @@ public class TicketLine implements Comparable<TicketLine>
 	{
 		return ticket.getId();
 	}
+	Ticket getTicket()
+	{
+		return ticket;
+	}
 
 	String getTitle()
 	{
