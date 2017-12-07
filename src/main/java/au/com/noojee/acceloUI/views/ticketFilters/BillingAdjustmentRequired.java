@@ -2,18 +2,22 @@ package au.com.noojee.acceloUI.views.ticketFilters;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import au.com.noojee.acceloapi.dao.ActivityDao;
+import au.com.noojee.acceloapi.dao.ActivityOwnerType;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.entities.Priority;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.entities.meta.fieldTypes.OrderByField.Order;
+import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
+import au.com.noojee.acceloapi.util.Conversions;
 
 public class BillingAdjustmentRequired extends TicketFilter
 {
@@ -33,37 +37,37 @@ public class BillingAdjustmentRequired extends TicketFilter
 		List<Ticket> unapproved = new ArrayList<>();
 
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
-		if (refresh) filter.refreshCache();
+		if (refresh)
+			filter.refreshCache();
 		filter.limit(1);
 
 		int offset = 0;
 
 		// while (unapproved.size() < 200)
-		while(true)
+		while (true)
 		{
 
 			filter.offset(offset);
 
 			// All closed tickets
-//			filter.where(filter.eq(Ticket_.standing, Ticket.Standing.closed)
-//					.and(filter.after(Ticket_.date_started, cutoffDate)))
-//					.orderBy(Ticket_.id, Order.DESC);
+			 filter.where(filter.eq(Ticket_.standing, Ticket.Standing.closed)
+			 .and(filter.after(Ticket_.date_started, Conversions.toLocalDateTime(cutoffDate))))
+			 .orderBy(Ticket_.id, Order.DESC);
 
 //			filter.where(filter.eq(Ticket_.priority, Priority.NoojeePriority.Critical))
-//			.and(filter.after(Ticket_.date_started, cutoffDate)))
-//			.orderBy(Ticket_.id, Order.DESC);
+//					.and(filter.after(Ticket_.date_started, Conversions.toLocalDateTime(cutoffDate)))
+//					.orderBy(Ticket_.id, Order.DESC);
 
-			
 			TicketDao daoTicket = new TicketDao();
 
 			List<Ticket> closedTickets = daoTicket.getByFilter(filter);
 
-			 // no more closed tickets so we are done here.
+			// no more closed tickets so we are done here.
 			if (closedTickets.isEmpty())
 				break;
 
 			// Find tickets that need a billing adjustment.
-			unapproved.addAll(closedTickets.parallelStream().filter(ticket -> billAdjustmentRequired(ticket))
+			unapproved.addAll(closedTickets.parallelStream().filter(ticket -> isBillAdjustmentRequired(ticket))
 					.collect(Collectors.toList()));
 
 			offset += 1;
@@ -71,24 +75,52 @@ public class BillingAdjustmentRequired extends TicketFilter
 
 		return unapproved;
 	}
-	
-	private boolean billAdjustmentRequired(Ticket ticket)
+
+	private boolean isBillAdjustmentRequired(Ticket ticket)
 	{
 		List<Activity> activities = new ActivityDao().getByTicket(ticket, true);
-		
+
 		// calculate the current total billable.
 		Duration totalBillable = activities.stream().map(Activity::getBillable).reduce(Duration.ZERO,
 				(lhs, rhs) -> lhs.plus(rhs));
 
-		long minutes = totalBillable.toMinutes();
-		long rounded = minutes;
+		if (ticket.getPriority() == Priority.NoojeePriority.Critical
+				|| ticket.getPriority() == Priority.NoojeePriority.Urgent)
+		{
+			// we always bill for critical or urgent.
+			return totalBillable.toMillis() == 0 || new TicketDao().isBillAdjustmentRequired(totalBillable, 60, 5);
+		}
+		else
+			return new TicketDao().isBillAdjustmentRequired(totalBillable, 15, 5);
+	}
 
-		// We only round up if they are more than 5 minutes into the next block.
-		long excess = minutes % 15;
-		if (minutes < 15 || excess > 5)
-			rounded = (long) (Math.ceil(minutes / 15.0f) * 15);
+	public static void roundBilling(Ticket ticket)
+	{
+		TicketDao daoTicket = new TicketDao();
 
-		return (rounded != minutes);
+		if (ticket.getPriority() == Priority.NoojeePriority.Critical
+				|| ticket.getPriority() == Priority.NoojeePriority.Urgent)
+		{
+			// We always bill a min of 1 hour for Critical and Urgent cases.
+			if (ticket.getBillableSeconds() == 0)
+			{
+				// Urgent and critical cases are always billable.
+				Activity activity = new Activity();
+				activity.setAgainst(AgainstType.ticket,ticket.getId());
+				activity.setOwner(ActivityOwnerType.staff, ticket.getAssignee());
+				activity.setSubject("Opened Ticket");
+				activity.setDetails("Code: Critical +1");
+				activity.setDateTimeStarted(ticket.getDateTimeStarted());
+				activity.setBillable(Duration.of(1, ChronoUnit.HOURS));
+				
+				new ActivityDao().insert(activity);
+			}
+
+			daoTicket.roundBilling(ticket, 60, 5);
+		}
+		else
+			daoTicket.roundBilling(ticket, 15, 5);
+
 	}
 
 	@Override

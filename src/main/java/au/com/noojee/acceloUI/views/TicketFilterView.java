@@ -465,7 +465,6 @@ public class TicketFilterView extends VerticalLayout implements View
 
 	private void roundBilling(LocalDate cutoffDate)
 	{
-		TicketDao daoTicket = new TicketDao();
 		TicketFilter filter = this.filtersBox.getValue();
 		if (filter == null)
 			SMNotification.show("Select a filter first.");
@@ -475,17 +474,14 @@ public class TicketFilterView extends VerticalLayout implements View
 			AtomicInteger progressCount = new AtomicInteger(0);
 
 			ConfirmDialog.show(ui, "Round Billing",
-					"Clicking Run will round billing data up to the next 15 min block for all tickets of type "
+					"Clicking Run will round billing data up to the next 15 min block (60 min for Critical and Urgent) for all tickets of type "
 							+ filter.getName(),
 					"Run", "Cancel", () ->
 						{
-							tickets.parallelStream()
+							tickets.stream()
 									.forEach(ticket ->
 										{
-											if (ticket.getPriority() == Priority.NoojeePriority.Critical || ticket.getPriority() == Priority.NoojeePriority.Urgent)
-												daoTicket.roundBilling(ticket, 60, 5);
-											else
-												daoTicket.roundBilling(ticket, 15, 5);
+											BillingAdjustmentRequired.roundBilling(ticket);
 											int count = progressCount.incrementAndGet();
 											updateLoading("Processed " + count + " tickets of " + tickets.size());
 										});
