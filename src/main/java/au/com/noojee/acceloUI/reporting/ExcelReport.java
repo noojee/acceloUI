@@ -22,6 +22,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.javamoney.moneta.Money;
 
 import au.com.noojee.acceloapi.AcceloException;
+import au.com.noojee.acceloapi.dao.ActivityDao;
 import au.com.noojee.acceloapi.dao.InvoiceDao;
 import au.com.noojee.acceloapi.dao.StaffDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
@@ -174,10 +175,10 @@ public class ExcelReport
 			cell = row.createCell(columnCount++);
 			cell.setCellValue(ticket.getId());
 			cell = row.createCell(columnCount++);
-			cell.setCellValue(Conversions.toDate(ticket.getDateOpened()));
+			cell.setCellValue(Conversions.toDate(ticket.getDateTimeOpened().toLocalDate()));
 			cell.setCellStyle(dateStyle);
 			cell = row.createCell(columnCount++);
-			cell.setCellValue(Conversions.toDate(ticket.getDateClosed()));
+			cell.setCellValue(Conversions.toDate(ticket.getDateTimeClosed().toLocalDate()));
 			cell.setCellStyle(dateStyle);
 			cell = row.createCell(columnCount++);
 			cell.setCellValue(getAssignee(ticket));
@@ -230,8 +231,9 @@ public class ExcelReport
 		Sheet activitySheet = workbook.createSheet("Ticket-" + ticket.getId());
 		
 		TicketDao daoTicket = new TicketDao();
+		ActivityDao daoActivity = new ActivityDao();
 
-		List<Activity> activities = daoTicket.getActivities(ticket, true);
+		List<Activity> activities = daoActivity.getByTicket(ticket, true);
 
 		int rowCount = 0;
 		int columnCount = 0;
@@ -253,7 +255,7 @@ public class ExcelReport
 		activitySheet.setColumnWidth(columnCount - 1, PixelUtil.pixel2WidthUnits(80));
 
 		cell = row.createCell(columnCount++);
-		cell.setCellValue(Conversions.toDate(ticket.getDateOpened()));
+		cell.setCellValue(Conversions.toDate(ticket.getDateTimeOpened().toLocalDate()));
 		cell.setCellStyle(dateStyle);
 
 		cell = row.createCell(columnCount++);
@@ -261,7 +263,7 @@ public class ExcelReport
 		cell.setCellStyle(boldStyle);
 		activitySheet.setColumnWidth(columnCount - 1, PixelUtil.pixel2WidthUnits(80));
 		cell = row.createCell(columnCount++);
-		cell.setCellValue(Conversions.toDate(ticket.getDateClosed()));
+		cell.setCellValue(Conversions.toDate(ticket.getDateTimeClosed().toLocalDate()));
 		cell.setCellStyle(dateStyle);
 
 		cell = row.createCell(columnCount++);
@@ -404,7 +406,7 @@ public class ExcelReport
 				columnCount = 0;
 
 				cell = row.createCell(columnCount++);
-				cell.setCellValue(Conversions.toDate(activity.getDateCreated()));
+				cell.setCellValue(Conversions.toDate(activity.getDateTimeCreated().toLocalDate()));
 				cell.setCellStyle(dateStyle);
 
 				// Subject value

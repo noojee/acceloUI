@@ -41,6 +41,11 @@ public class TicketLine implements Comparable<TicketLine>
 	{
 		return ticket.getTitle();
 	}
+	
+	String getPriority()
+	{
+		return ticket.getPriority().toString();
+	}
 
 	String getAssignee()
 	{
@@ -111,7 +116,7 @@ public class TicketLine implements Comparable<TicketLine>
 
 	LocalDate getDateStarted()
 	{
-		return ticket.getDateStarted();
+		return ticket.getDateTimeStarted().toLocalDate();
 	}
 
 	LocalDate getDateLastInteracted()

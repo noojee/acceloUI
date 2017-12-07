@@ -2,16 +2,19 @@ package au.com.noojee.acceloUI.views;
 
 import java.net.URL;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.vaadin.dialogs.ConfirmDialog;
 
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.icons.VaadinIcons;
@@ -20,25 +23,29 @@ import com.vaadin.server.Page;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.DateField;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.MultiSelect;
-import com.vaadin.ui.Notification;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.renderers.LocalDateRenderer;
 
 import au.com.noojee.acceloUI.util.SMNotification;
+import au.com.noojee.acceloUI.views.ticketFilters.BillingAdjustmentRequired;
 import au.com.noojee.acceloUI.views.ticketFilters.ErrorFilter;
-import au.com.noojee.acceloUI.views.ticketFilters.NoContractFilter;
+import au.com.noojee.acceloUI.views.ticketFilters.NoContractAscFilter;
+import au.com.noojee.acceloUI.views.ticketFilters.NoContractDescFilter;
 import au.com.noojee.acceloUI.views.ticketFilters.TicketFilter;
 import au.com.noojee.acceloUI.views.ticketFilters.UnapprovedTicketFilter;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.TicketDao;
+import au.com.noojee.acceloapi.entities.Priority;
 import au.com.noojee.acceloapi.entities.Ticket;
 
 /**
@@ -70,6 +77,10 @@ public class TicketFilterView extends VerticalLayout implements View
 
 	private ComboBox<TicketFilter> filtersBox;
 
+	private CheckBox refreshList;
+
+	private DateField cutoffDate;
+
 	public TicketFilterView()
 	{
 		this.ui = UI.getCurrent();
@@ -83,37 +94,11 @@ public class TicketFilterView extends VerticalLayout implements View
 		{
 			if (!initialised)
 			{
-				HorizontalLayout filtersLayout = new HorizontalLayout();
-				this.addComponent(filtersLayout);
+				layoutHeader();
 
 				initialiseGrid();
 
-				List<TicketFilter> filters = Arrays.asList(new UnapprovedTicketFilter(), new NoContractFilter(),
-						new ErrorFilter());
-				filtersBox = new ComboBox<>();
-				filtersBox.setWidth("200");
-				filtersBox.setDataProvider(new ListDataProvider<TicketFilter>(filters));
-				filtersBox.setItemCaptionGenerator(TicketFilter::getName);
-				filtersBox.addValueChangeListener(l -> loadTickets(l.getValue(), false));
-				filtersBox.setSelectedItem(filters.get(1));
-				filtersBox.setEmptySelectionAllowed(false);
-
-				Button refreshButton = new Button("Refresh");
-				refreshButton.addClickListener(l -> refreshList());
-				filtersLayout.addComponent(refreshButton);
-				filtersLayout.addComponent(filtersBox, 0);
-
-				HorizontalLayout buttons = new HorizontalLayout();
-				// buttons.setWidth("100%");
-				this.addComponent(buttons);
-
-				Button delete = new Button("Delete");
-				delete.addClickListener(l -> deleteTickets());
-				buttons.addComponent(delete);
-
-				Button editTicket = new Button("Edit Ticket(s)");
-				editTicket.addClickListener(l -> editTicket());
-				buttons.addComponent(editTicket);
+				layoutFooter();
 
 				initialised = true;
 			}
@@ -127,27 +112,129 @@ public class TicketFilterView extends VerticalLayout implements View
 		return this;
 	}
 
-	private void refreshList()
+	private void layoutFooter()
 	{
+
+		VerticalLayout footer = new VerticalLayout();
+		this.addComponent(footer);
+		
+		HorizontalLayout buttonLine = new HorizontalLayout();
+		footer.addComponent(buttonLine);
+		buttonLine.setWidth("100%");
+		
+
+		Button delete = new Button("Delete");
+		delete.addClickListener(l -> deleteTickets());
+		buttonLine.addComponent(delete);
+		buttonLine.setComponentAlignment(delete, Alignment.TOP_LEFT);
+
+		Button editTicket = new Button("Edit Ticket(s)");
+		editTicket.addClickListener(l -> editSelectedTickets());
+		buttonLine.addComponent(editTicket);
+		buttonLine.setComponentAlignment(editTicket, Alignment.TOP_LEFT);
+
+		Button approveTicket = new Button("Approve Ticket(s)");
+		approveTicket.addClickListener(l -> approveSelectedTickets());
+		buttonLine.addComponent(approveTicket);
+		buttonLine.setComponentAlignment(approveTicket, Alignment.TOP_LEFT);
+
+		Button roundBillingButton = new Button("Round Billing Data");
+		buttonLine.addComponent(roundBillingButton);
+		roundBillingButton.addClickListener(l -> roundBilling(cutoffDate.getValue()));
+		buttonLine.setComponentAlignment(roundBillingButton, Alignment.TOP_LEFT);
+
+		Button flush = new Button("Flush Cache");
+		buttonLine.addComponent(flush);
+		buttonLine.setComponentAlignment(flush, Alignment.TOP_RIGHT);
+		flush.addClickListener(l -> flushCache());
+
+		HorizontalLayout dateLine = new HorizontalLayout();
+		footer.addComponent(dateLine);
+		dateLine.setWidth("100%");
+		loading = new Label("Select a Filter and click Load");
+		dateLine.addComponent(loading);
+		
+		Label dateLabel = new Label("Cutoff Date");
+		dateLine.addComponent(dateLabel);
+		dateLine.setComponentAlignment(dateLabel, Alignment.MIDDLE_RIGHT);
+		cutoffDate = new DateField();
+		dateLine.addComponent(cutoffDate);
+		cutoffDate.setDateFormat("dd/MMM/yy");
+		LocalDate lastMonth = LocalDate.now().minusMonths(1).withDayOfMonth(1);
+		cutoffDate.setValue(lastMonth);
+		dateLine.setComponentAlignment(cutoffDate, Alignment.MIDDLE_RIGHT);
+		
+		
+
+	}
+
+	private void layoutHeader()
+	{
+		HorizontalLayout headerLayout = new HorizontalLayout();
+		this.addComponent(headerLayout);
+
+		List<TicketFilter> filters = Arrays.asList(new UnapprovedTicketFilter(), new NoContractAscFilter(),
+				new NoContractDescFilter(),
+				new ErrorFilter(), new BillingAdjustmentRequired());
+		filtersBox = new ComboBox<>();
+		filtersBox.setWidth("200");
+		filtersBox.setDataProvider(new ListDataProvider<TicketFilter>(filters));
+		filtersBox.setItemCaptionGenerator(TicketFilter::getName);
+		// filtersBox.addValueChangeListener(l -> loadTickets(l.getValue(), false));
+		// filtersBox.setSelectedItem(filters.get(1));
+		filtersBox.setEmptySelectionAllowed(true);
+
+		Button loadButton = new Button("Load");
+		loadButton.addClickListener(l -> loadList());
+		headerLayout.addComponent(loadButton);
+		refreshList = new CheckBox("Refresh Cache");
+		headerLayout.addComponent(refreshList);
+		headerLayout.addComponent(filtersBox, 0);
+
+		heading = new Label();
+		heading.setContentMode(ContentMode.HTML);
+		setHeading("Tickets Filters");
+
+		headerLayout.addComponent(heading);
+
+	}
+
+	private void loadList()
+	{
+		
 		Optional<TicketFilter> item = filtersBox.getSelectedItem();
-		item.ifPresent(filter -> loadTickets(filter, true));
+		boolean refreshList = this.refreshList.getValue();
+		item.ifPresent(filter -> loadTickets(filter, cutoffDate, refreshList));
 		ticketProvider.refreshAll();
 	}
 
 	private void deleteTickets()
 	{
 		MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
-		selections.getValue().parallelStream().forEach(line ->
-			{
 
-				new TicketDao().delete(line.getTicket());
-				this.ticketLines.remove(line);
-			});
+		ConfirmDialog.show(UI.getCurrent(), "Please Confirm:", "Are you really sure?",
+				"Yes Delete it!", "No, Save me.", new ConfirmDialog.Listener()
+				{
+					private static final long serialVersionUID = 1L;
 
-		// remove all selections as we have just deleted them.
-		selections.deselectAll();
+					public void onClose(ConfirmDialog dialog)
+					{
+						if (dialog.isConfirmed())
+						{
+							// Confirmed to continue
+							selections.getValue().parallelStream().forEach(line ->
+								{
+									new TicketDao().delete(line.getTicket());
+									TicketFilterView.this.ticketLines.remove(line);
+								});
 
-		this.ticketProvider.refreshAll();
+							// remove all selections as we have just deleted them.
+							selections.deselectAll();
+
+							TicketFilterView.this.ticketProvider.refreshAll();
+						}
+					}
+				});
 	}
 
 	void updateLoading(String message)
@@ -170,12 +257,6 @@ public class TicketFilterView extends VerticalLayout implements View
 			this.setMargin(true);
 			this.setSpacing(true);
 			this.setSizeFull();
-			heading = new Label();
-			heading.setContentMode(ContentMode.HTML);
-
-			setHeading("Tickets Filters");
-
-			this.addComponent(heading);
 
 			grid = new Grid<>();
 			grid.setSelectionMode(Grid.SelectionMode.MULTI);
@@ -184,60 +265,96 @@ public class TicketFilterView extends VerticalLayout implements View
 			this.grid.setDataProvider(ticketProvider);
 
 			grid.setSizeFull();
+			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e ->
+				{
+					UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
+				})).setWidth(80).setCaption("Details");
+
 			grid.addColumn(TicketLine::getId).setCaption("No.").setWidth(80);
 			grid.addColumn(TicketLine::getCompanyName).setCaption("Company").setWidth(200);
-			grid.addColumn(TicketLine::getTitle).setCaption("Title").setExpandRatio(1);
 			grid.addColumn(TicketLine::getDateStarted, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Created")
 					.setWidth(120);
 			grid.addColumn(TicketLine::getDateLastInteracted, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Updated")
 					.setWidth(120);
 			grid.addColumn(TicketLine::getAssignee).setCaption("Engineer").setWidth(120);
+			grid.addColumn(TicketLine::getPriority).setCaption("Priority").setWidth(100);
 
-			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e ->
-				{
-					UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
-				})).setWidth(80).setCaption("Details");
+			// grid.addComponentColumn(ticketLine -> new IconButton("Change Priority", VaadinIcons.CHEVRON_CIRCLE_UP, e
+			// ->
+			// {
+			// selectPriority(ticketLine.ticket);
+			// })).setWidth(80).setCaption("");
+
+			grid.addColumn(TicketLine::getTitle).setCaption("Title").setExpandRatio(1);
 
 			// grid.addComponentColumn(ticketLine -> new Button("Refresh", e -> ticketLine.refresh()));
 
 			this.addComponent(grid);
 			this.setExpandRatio(grid, 1);
 
-			HorizontalLayout bottomLine = new HorizontalLayout();
-			bottomLine.setWidth("100%");
-			this.addComponent(bottomLine);
-
-			loading = new Label("Loading Contracts ...");
-			bottomLine.addComponent(loading);
-			bottomLine.setComponentAlignment(loading, Alignment.MIDDLE_LEFT);
-
-			Button flush = new Button("Flush Cache");
-			bottomLine.addComponent(flush);
-			bottomLine.setComponentAlignment(flush, Alignment.MIDDLE_RIGHT);
-			flush.addClickListener(l -> flushCache());
 		}
 
 	}
 
-	private void loadTickets(TicketFilter ticketFilter, boolean refresh) throws AcceloException
+	// private void selectPriority(Ticket ticket)
+	// {
+	// VerticalLayout popupContent = new VerticalLayout();
+	//
+	// ListSelect<Priority.NoojeePriority> selectList = new ListSelect<>();
+	// selectList.setDataProvider(new ListDataProvider<>(Arrays.asList(Priority.NoojeePriority.values())));
+	// popupContent.addComponent(selectList);
+	//
+	// HorizontalLayout buttons = new HorizontalLayout();
+	//
+	// Button ok = new Button("OK");
+	// buttons.addComponent(ok);
+	// Button cancel = new Button("Cancel");
+	// buttons.addComponent(cancel);
+	//
+	// popupContent.addComponent(buttons);
+	//
+	// final Window dialog = new Window("Select Priority");
+	// dialog.setModal(true);
+	// ui.addWindow(dialog);
+	// dialog.setContent(popupContent);
+	//
+	// ok.addClickListener(l -> { updatePriority(dialog, ticket, selectList.getValue()); });
+	// cancel.addClickListener(l -> dialog.close());
+	//
+	// }
+
+	// private void updatePriority(Window dialog, Ticket ticket, Set<NoojeePriority> prioritySet)
+	// {
+	//
+	// if (prioritySet.size() != 1)
+	// SMNotification.show("Invalid Selection", "Please select one and only one Priority",Type.ERROR_MESSAGE);
+	// else
+	// {
+	// TicketDao daoTicket = new TicketDao();
+	//
+	// ticket.setPriority(prioritySet.stream().findFirst().get());
+	// daoTicket.update(ticket);
+	// dialog.close();
+	// }
+	//
+	// }
+
+	private void loadTickets(TicketFilter ticketFilter, DateField cutoffDate, boolean refresh) throws AcceloException
 	{
 
 		logger.error("Start fetch Tickets");
-		updateLoading("Loading...");
+		updateLoading("Loading " + ticketFilter.getName() + "... ");
 
 		ticketLines.clear();
 		ticketProvider.refreshAll();
 		grid.getSelectionModel().deselectAll();
 
-		heading.setValue(ticketFilter.getName());
-
 		new Thread(() ->
 			{
-
 				this.loadCount = 0;
 				try
 				{
-					List<Ticket> tickets = ticketFilter.getTickets(refresh);
+					List<Ticket> tickets = ticketFilter.getTickets(cutoffDate.getValue(), refresh);
 
 					List<TicketLine> lines = tickets.parallelStream().map(t ->
 						{
@@ -252,7 +369,7 @@ public class TicketFilterView extends VerticalLayout implements View
 					ui.access(() ->
 						{
 							ticketProvider.refreshAll();
-							lines.stream().forEach(line -> grid.getSelectionModel().select(line));
+							// lines.stream().forEach(line -> grid.getSelectionModel().select(line));
 							updateLoading("Load Complete");
 						});
 
@@ -265,38 +382,39 @@ public class TicketFilterView extends VerticalLayout implements View
 
 	}
 
-	private void editTicket()
+	private void editSelectedTickets()
+	{
+		openPage(this::openEditPage);
+	}
+
+	private void approveSelectedTickets()
+	{
+		openPage(this::openApprovePage);
+	}
+
+	// void openPage(Predicate<TicketLine> pageOpener)
+	void openPage(BiFunction<TicketLine, Integer, Void> pageOpener)
 	{
 		try
 		{
-			MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
+			List<TicketLine> selected = getSelectedTickets();
 
-			Optional<TicketFilter> ticketFilter = filtersBox.getSelectedItem();
-
-			if (!ticketFilter.isPresent())
+			if (selected == null)
 				SMNotification.show("Please select a filter first.");
 			else
 			{
-				
 				int pageCount = 0;
-				Set<TicketLine> list = selections.getValue();
 
-				for (TicketLine ticketLine : list)
+				for (TicketLine ticketLine : selected)
 				{
 					try
 					{
-						String action = ticketFilter.get().buildURL(ticketLine.ticket);
-
-						URL acceloApprovalPage;
-						acceloApprovalPage = new URL("https", "noojee.accelo.com", 443, action);
-						Page.getCurrent().open(acceloApprovalPage.toExternalForm(),
-								"_accelo" + (pageCount == 0 ? "" : pageCount), true);
-
+						pageOpener.apply(ticketLine, pageCount);
 						pageCount++;
 					}
 					catch (Throwable e)
 					{
-						SMNotification.show("Error opening Accelo", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+						SMNotification.show("Error opening Accelo", e.getMessage(), SMNotification.Type.ERROR_MESSAGE);
 					}
 
 				}
@@ -305,7 +423,73 @@ public class TicketFilterView extends VerticalLayout implements View
 		}
 		catch (Exception e)
 		{
-			SMNotification.show("Error", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+			SMNotification.show("Error", e.getMessage(), SMNotification.Type.ERROR_MESSAGE);
+		}
+	}
+
+	Void openEditPage(TicketLine ticketLine, int pageCount)
+	{
+		URL acceloApprovalPage = new TicketDao().getEditURL("noojee.accelo.com", ticketLine.ticket);
+
+		Page.getCurrent().open(acceloApprovalPage.toExternalForm(),
+				"_accelo" + (pageCount == 0 ? "" : pageCount), true);
+		
+		return null;
+
+	}
+
+	Void openApprovePage(TicketLine ticketLine, int pageCount)
+	{
+			
+		URL acceloApprovalPage = new TicketDao().getApproveURL("noojee.accelo.com", ticketLine.ticket);
+
+		Page.getCurrent().open(acceloApprovalPage.toExternalForm(),
+				"_accelo" + (pageCount == 0 ? "" : pageCount), true);
+
+		return null;
+
+
+	}
+
+	private List<TicketLine> getSelectedTickets()
+	{
+		List<TicketLine> ticketLines = null;
+		MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
+		Optional<TicketFilter> ticketFilter = filtersBox.getSelectedItem();
+
+		if (ticketFilter.isPresent())
+			ticketLines = new ArrayList<>(selections.getValue());
+
+		return ticketLines;
+	}
+
+	private void roundBilling(LocalDate cutoffDate)
+	{
+		TicketDao daoTicket = new TicketDao();
+		TicketFilter filter = this.filtersBox.getValue();
+		if (filter == null)
+			SMNotification.show("Select a filter first.");
+		else
+		{
+			List<Ticket> tickets = filter.getTickets(cutoffDate, false);
+			AtomicInteger progressCount = new AtomicInteger(0);
+
+			ConfirmDialog.show(ui, "Round Billing",
+					"Clicking Run will round billing data up to the next 15 min block for all tickets of type "
+							+ filter.getName(),
+					"Run", "Cancel", () ->
+						{
+							tickets.parallelStream()
+									.forEach(ticket ->
+										{
+											if (ticket.getPriority() == Priority.NoojeePriority.Critical || ticket.getPriority() == Priority.NoojeePriority.Urgent)
+												daoTicket.roundBilling(ticket, 60, 5);
+											else
+												daoTicket.roundBilling(ticket, 15, 5);
+											int count = progressCount.incrementAndGet();
+											updateLoading("Processed " + count + " tickets of " + tickets.size());
+										});
+						});
 		}
 	}
 

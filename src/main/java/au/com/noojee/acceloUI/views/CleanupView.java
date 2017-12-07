@@ -21,7 +21,7 @@ import com.vaadin.ui.Label;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
-import com.vaadin.ui.renderers.LocalDateRenderer;
+import com.vaadin.ui.renderers.LocalDateTimeRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloapi.AcceloException;
@@ -144,7 +144,7 @@ public class CleanupView extends VerticalLayout implements View
 		activityGrid.addColumn(ActivityLine::getStanding).setCaption("Standing");
 		activityGrid.addColumn(ticketLine -> ticketLine.getAssignee()).setCaption("Engineer");
 
-		activityGrid.addColumn(ActivityLine::getDateCreated, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Created");
+		activityGrid.addColumn(ActivityLine::getDateTimeCreated, new LocalDateTimeRenderer("dd/MM/yy HH:mm")).setCaption("Created");
 
 		activityGrid.addColumn(activityLine -> Formatters.format(activityLine.getBillable())).setCaption("Billable")
 				.setStyleGenerator(activityLine -> "align-right");

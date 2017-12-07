@@ -1,19 +1,24 @@
 package au.com.noojee.acceloUI.views;
 
+import java.net.URL;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.vaadin.dialogs.ConfirmDialog;
 
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.icons.VaadinIcons;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.Page;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.shared.ui.MarginInfo;
 import com.vaadin.ui.Alignment;
@@ -22,12 +27,14 @@ import com.vaadin.ui.Component;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
+import com.vaadin.ui.MultiSelect;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.renderers.LocalDateRenderer;
-import com.vaadin.ui.themes.ValoTheme;
 
+import au.com.noojee.acceloUI.util.SMNotification;
+import au.com.noojee.acceloUI.views.TicketView.ParamArg.ArgType;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.CompanyDao;
@@ -45,7 +52,6 @@ import au.com.noojee.acceloapi.util.Formatters;
  * Show all companies with a retainer.
  * 
  * @author bsutton
- *
  */
 public class TicketView extends VerticalLayout implements View
 {
@@ -67,7 +73,7 @@ public class TicketView extends VerticalLayout implements View
 	private Label contractValue;
 	private Label contractRemaining;
 
-	private int currentContractId = -1;
+	private ParamArg currentPArg = null;
 
 	private UI ui;
 
@@ -97,25 +103,33 @@ public class TicketView extends VerticalLayout implements View
 		}
 	}
 
-	private void loadTickets(String contractIdParam) throws AcceloException
+	private void loadTickets(String urlParam) throws AcceloException
 	{
-
-		int contractId = validContractId(contractIdParam);
+		MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
+		selections.deselectAll();
+		
+		ParamArg pArg = validParamId(urlParam);
 
 		// Do we need to load data
-		if (contractId != -1 && contractId != currentContractId)
+		if (pArg != null && pArg != currentPArg)
 		{
-			currentContractId = contractId;
+			currentPArg = pArg;
 
-			Contract contract = new ContractDao().getById(currentContractId);
-			Company company = new CompanyDao().getById(contract.getCompanyId());
+			Contract contract = new ContractDao().getById(pArg.id);
+			if (pArg.type == ArgType.contract)
+				currentPArg.id = contract.getCompanyId();
+
+			Company company = new CompanyDao().getById(currentPArg.id);
 
 			companyName.setValue("Company: " + company.getName());
-			contractTitle.setValue("Contract: " + contract.getTitle());
-			contractStartDate.setValue("Start: " + Formatters.format(contract.getDateStarted()));
-			contractEndDate.setValue("Expires: " + Formatters.format(contract.getDateExpires()));
-			contractValue.setValue("Value: " + Formatters.format(contract.getValue()));
-			contractRemaining.setValue("Remaining: " + Formatters.format(contract.getRemainingValue()));
+			if (contract != null)
+			{
+				contractTitle.setValue("Contract: " + contract.getTitle());
+				contractStartDate.setValue("Start: " + Formatters.format(contract.getDateStarted()));
+				contractEndDate.setValue("Expires: " + Formatters.format(contract.getDateExpires()));
+				contractValue.setValue("Value: " + Formatters.format(contract.getValue()));
+				contractRemaining.setValue("Remaining: " + Formatters.format(contract.getRemainingValue()));
+			}
 
 			logger.error("Start fetch Tickets");
 
@@ -129,77 +143,103 @@ public class TicketView extends VerticalLayout implements View
 
 	private void ticketLoader(Contract contract)
 	{
-		new Thread(() -> {
-
-			this.loadCount = 0;
-			ticketLines.clear();
-			updateLoading("Loading");
-
-			try
+		new Thread(() ->
 			{
-				if (contract != null)
+				this.loadCount = 0;
+				ticketLines.clear();
+				updateLoading("Loading");
+
+				try
 				{
 					List<Ticket> tickets = getTickets(contract);
 
-					List<TicketLine> lines = tickets.parallelStream().map(t -> {
-						updateLoading("Loading " + this.loadCount++);
-						TicketLine l = new TicketLine(t);
-						// force some caching.
-						l.getAssignee();
-						l.getBillable();
-						l.getNonBillable();
-						l.isWorkApproved();
-						l.getContact();
-						l.isOpen();
-						return l;
-					}).collect(Collectors.toList());
+					List<TicketLine> lines = tickets.parallelStream().map(t ->
+						{
+							updateLoading("Loading " + this.loadCount++);
+							TicketLine l = new TicketLine(t);
+							// force some caching.
+							l.getAssignee();
+							l.getBillable();
+							l.getNonBillable();
+							l.isWorkApproved();
+							l.getContact();
+							l.isOpen();
+							return l;
+						}).collect(Collectors.toList());
 
 					ticketLines.addAll(lines.stream().sorted().collect(Collectors.toList()));
 
+					ui.access(() ->
+						{
+							ticketProvider.refreshAll();
+						});
+					updateLoading("Load Complete");
+
+					loadWork();
+
 				}
-
-				ui.access(() -> {
-					ticketProvider.refreshAll();
-				});
-				updateLoading("Load Complete");
-
-				loadWork();
-
-			}
-			catch (NumberFormatException | AcceloException e)
-			{
-				logger.error(e, e);
-			}
-		}).start();
+				catch (NumberFormatException | AcceloException e)
+				{
+					logger.error(e, e);
+				}
+			}).start();
 	}
 
-	private int validContractId(String contractIdParam)
+	static class ParamArg
 	{
-		int contractId = -1;
+		enum ArgType
+		{
+			company, contract
+		};
+
+		ArgType type;
+		int id;
+		public boolean allTickets = true;
+	}
+
+	private ParamArg validParamId(String urlParam)
+	{
+		ParamArg parg = null;
 
 		// Do we need to load data
-		if (contractIdParam != null && !contractIdParam.isEmpty())
+		if (urlParam != null && !urlParam.isEmpty())
 		{
-			contractId = Integer.valueOf(contractIdParam);
+			String[] args = urlParam.split("=");
+			if (args.length >= 2)
+			{
+				parg = new ParamArg();
+				parg.id = Integer.valueOf(args[1]);
+				parg.type = ArgType.valueOf(args[0]);
+				
+				if (args.length == 3)
+					parg.allTickets = false;
+			}
 		}
 		else
 			// if nothing was passed show the current data.
-			contractId = currentContractId;
-		return contractId;
+			parg = currentPArg;
+		return parg;
 	}
 
 	private List<Ticket> getTickets(Contract contract) throws AcceloException
 	{
+		int companyId = this.currentPArg.id;
+		
 		// all tickets assigned to this contract
 		// CONSIDER restricting the date range.
-		List<Ticket> tickets = new TicketDao().getByContract(contract);
+		List<Ticket> tickets = new ArrayList<>();
+		if (contract != null && this.currentPArg.allTickets == true)
+		{
+			tickets.addAll(new TicketDao().getByContract(contract));
+			companyId = contract.getCompanyId();
+		}
 
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
 
 		// Add all tickets which belong to the company but haven't been
 		// assigned.
-		filter.where(filter.against(AgainstType.company, contract.getCompanyId()).and(filter.eq(Ticket_.contract, 0))
-				.and(filter.after(Ticket_.date_started, LocalDate.of(2017, 03, 01))));
+		filter.where(filter.against(AgainstType.company, companyId).and(filter.eq(Ticket_.contract, 0))
+				.and(filter.after(Ticket_.date_started, LocalDateTime.of(2017, 03, 01, 0, 0, 0))));
 
 		List<Ticket> unassigned = new TicketDao().getByFilter(filter);
 		tickets.addAll(unassigned);
@@ -210,28 +250,33 @@ public class TicketView extends VerticalLayout implements View
 	private void loadWork()
 	{
 		// background load the activity no.s
-		new Thread(() -> {
-			ticketLines.parallelStream().distinct().forEach(l -> new UIAccessor(this.ui, false, () -> {
-				l.loadWork();
-				new UIAccessor(this.ui, true, () -> {
-					this.ticketProvider.refreshAll();
-				}).run();
+		new Thread(() ->
+			{
+				ticketLines.parallelStream().distinct().forEach(l -> new UIAccessor(this.ui, false, () ->
+					{
+						l.loadWork();
+						new UIAccessor(this.ui, true, () ->
+							{
+								this.ticketProvider.refreshAll();
+							}).run();
 
-			}).run());
+					}).run());
 
-			new UIAccessor(this.ui, true, () -> {
-				loading.setValue("Work Load Complete");
-			}).run();
+				new UIAccessor(this.ui, true, () ->
+					{
+						loading.setValue("Work Load Complete");
+					}).run();
 
-		}).start();
+			}).start();
 
 	}
 
 	void updateLoading(String message)
 	{
-		ui.access(() -> {
-			loading.setValue(message);
-		});
+		ui.access(() ->
+			{
+				loading.setValue(message);
+			});
 	}
 
 	void initialiseGrid() throws AcceloException
@@ -248,6 +293,8 @@ public class TicketView extends VerticalLayout implements View
 			this.addComponent(createContractDetails());
 
 			grid = new Grid<>();
+			grid.setSelectionMode(Grid.SelectionMode.MULTI);
+
 
 			ticketProvider = new ListDataProvider<>(ticketLines);
 			this.grid.setDataProvider(ticketProvider);
@@ -264,20 +311,10 @@ public class TicketView extends VerticalLayout implements View
 			grid.addColumn(TicketLine::isOpen).setCaption("Open");
 			grid.addColumn(TicketLine::isWorkApproved).setCaption("Approved");
 
-			grid.addComponentColumn(ticketLine -> {
-				IconButton link = new IconButton("Attach To Contract", VaadinIcons.LINK,
-						e -> attachToContract(ticketLine));
-				link.setEnabled(!ticketLine.isAttached());
-				if (!ticketLine.isAttached())
+			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e ->
 				{
-					link.setStyleName(ValoTheme.BUTTON_FRIENDLY);
-				}
-				return link;
-			}).setWidth(80).setCaption("Link");
-
-			grid.addComponentColumn(ticketLine -> new IconButton("View Activities", VaadinIcons.SEARCH, e -> {
-				UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
-			})).setWidth(80).setCaption("Details");
+					UI.getCurrent().getNavigator().navigateTo(ActivityView.VIEW_NAME + "/" + ticketLine.getId());
+				})).setWidth(80).setCaption("Details");
 
 			grid.addColumn(ticketLine -> formatDuration(ticketLine.getBillable())).setCaption("Billable")
 					.setStyleGenerator(ticketLine -> "align-right");
@@ -297,11 +334,22 @@ public class TicketView extends VerticalLayout implements View
 			loading = new Label("Loading Contracts ...");
 			bottomLine.addComponent(loading);
 			bottomLine.setComponentAlignment(loading, Alignment.MIDDLE_LEFT);
+			
+			Button delete = new Button("Delete");
+			delete.addClickListener(l -> deleteTickets());
+			bottomLine.addComponent(delete);
+
+			Button editTicket = new Button("Edit Ticket(s)");
+			editTicket.addClickListener(l -> editTicket());
+			bottomLine.addComponent(editTicket);
+
 
 			Button flush = new Button("Flush Cache");
 			bottomLine.addComponent(flush);
 			bottomLine.setComponentAlignment(flush, Alignment.MIDDLE_RIGHT);
 			flush.addClickListener(l -> flushCache());
+			
+	
 		}
 
 	}
@@ -310,12 +358,8 @@ public class TicketView extends VerticalLayout implements View
 	{
 		AcceloCache.getInstance().flushCache();
 		/*
-		 * // Flush the tickets and activities current on display.
-		 * 
-		 * for ( TicketLine line : ticketLines) { Ticket ticket = line.ticket;
-		 * 
-		 * AcceloCache.getInstance().flushEntities(new
-		 * TicketDao().getActivities(ticket));
+		 * // Flush the tickets and activities current on display. for ( TicketLine line : ticketLines) { Ticket ticket
+		 * = line.ticket; AcceloCache.getInstance().flushEntities(new TicketDao().getActivities(ticket));
 		 * AcceloCache.getInstance().flushEntity(ticket); }
 		 */
 		ticketProvider.refreshAll();
@@ -352,25 +396,89 @@ public class TicketView extends VerticalLayout implements View
 		return layout;
 	}
 
-	private void attachToContract(TicketLine ticketLine)
-	{
-		try
-		{
-			Ticket ticket = ticketLine.ticket;
-			ticket.setContractId(this.currentContractId);
-			new TicketDao().update(ticket);
-			this.ticketProvider.refreshItem(ticketLine);
-		}
-		catch (AcceloException e)
-		{
-			Notification.show("Failed to update ticket", e.getMessage(), Notification.Type.ERROR_MESSAGE);
-		}
-	}
+	// private void attachToContract(TicketLine ticketLine)
+	// {
+	// try
+	// {
+	// Ticket ticket = ticketLine.ticket;
+	// ticket.setContractId(this.currentPArg.);
+	// new TicketDao().update(ticket);
+	// this.ticketProvider.refreshItem(ticketLine);
+	// }
+	// catch (AcceloException e)
+	// {
+	// Notification.show("Failed to update ticket", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+	// }
+	// }
 
 	String formatDuration(Duration duration)
 	{
 
 		return (duration == null ? "" : DurationFormatUtils.formatDuration(duration.toMillis(), "H:mm"));
 	}
+	
+	private void deleteTickets()
+	{
+		MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
+
+		ConfirmDialog.show(UI.getCurrent(), "Please Confirm:", "Are you really sure?",
+				"Yes Delete it!", "No, Save me.", new ConfirmDialog.Listener()
+				{
+					private static final long serialVersionUID = 1L;
+
+					public void onClose(ConfirmDialog dialog)
+					{
+						if (dialog.isConfirmed())
+						{
+							// Confirmed to continue
+							selections.getValue().parallelStream().forEach(line ->
+								{
+									new TicketDao().delete(line.getTicket());
+									TicketView.this.ticketLines.remove(line);
+								});
+
+							// remove all selections as we have just deleted them.
+							selections.deselectAll();
+
+							TicketView.this.ticketProvider.refreshAll();
+						}
+					}
+				});
+	}
+
+	
+	private void editTicket()
+	{
+		try
+		{
+			MultiSelect<TicketLine> selections = this.grid.asMultiSelect();
+
+				int pageCount = 0;
+				Set<TicketLine> list = selections.getValue();
+
+				for (TicketLine ticketLine : list)
+				{
+					try
+					{
+						URL acceloApprovalPage = new TicketDao().getEditURL("noojee.accelo.com", ticketLine.getTicket());
+						Page.getCurrent().open(acceloApprovalPage.toExternalForm(),
+								"_accelo" + (pageCount == 0 ? "" : pageCount), true);
+
+						pageCount++;
+					}
+					catch (Throwable e)
+					{
+						SMNotification.show("Error opening Accelo", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+					}
+
+				}
+
+		}
+		catch (Exception e)
+		{
+			SMNotification.show("Error", e.getMessage(), Notification.Type.ERROR_MESSAGE);
+		}
+	}
+
 
 }

@@ -1,7 +1,7 @@
 package au.com.noojee.acceloUI.views;
 
 import java.time.Duration;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,14 +60,14 @@ public class ActivityLine
 		return staffName;
 	}
 	
-	public LocalDate getDateStarted()
+	public LocalDateTime getDateTimeStarted()
 	{
-		return this.activity.getDateStarted();
+		return this.activity.getDateTimeStarted();
 	}
 
-	public LocalDate getDateCreated()
+	public LocalDateTime getDateTimeCreated()
 	{
-		return this.activity.getDateCreated();
+		return this.activity.getDateTimeCreated();
 	}
 
 	public Duration getBillable()

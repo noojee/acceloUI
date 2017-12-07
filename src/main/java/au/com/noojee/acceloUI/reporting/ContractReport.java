@@ -69,9 +69,9 @@ public class ContractReport
 
 		for (Ticket ticket : tickets)
 		{
-			logger.error("Found Ticket: " + ticket.getId() + " Closed:" + ticket.getDateClosed());
-			if (ticket.getDateClosed() != null && ticket.getDateClosed().isAfter(period.getDateCommenced())
-					&& ticket.getDateClosed().isBefore(period.getDateExpires()))
+			logger.error("Found Ticket: " + ticket.getId() + " Closed:" + ticket.getDateTimeClosed());
+			if (ticket.getDateTimeClosed() != null && ticket.getDateTimeClosed().toLocalDate().isAfter(period.getDateCommenced())
+					&& ticket.getDateTimeClosed().toLocalDate().isBefore(period.getDateExpires()))
 			{
 				logger.error("Ticket is in current period");
 				periodTickets.add(ticket);

@@ -113,7 +113,7 @@ public class CompanyView extends VerticalLayout implements View
 					.setStyleGenerator(contractLine -> "align-right");
 
 			grid.addComponentColumn(contractLine -> new IconButton("Tickets", VaadinIcons.SEARCH, e -> UI.getCurrent().getNavigator()
-					.navigateTo(TicketView.VIEW_NAME + "/" + contractLine.getContract().getId())))
+					.navigateTo(TicketView.VIEW_NAME + "/contract=" + contractLine.getContract().getId())))
 			.setWidth(80)
 			.setCaption("Tickets");
 			

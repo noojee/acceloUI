@@ -1,5 +1,6 @@
 package au.com.noojee.acceloUI.views.ticketFilters;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,7 +19,7 @@ public class ErrorFilter extends TicketFilter
 		return "Error Reports";
 	}
 
-	public List<Ticket> getTickets(boolean refresh)
+	public List<Ticket> getTickets(LocalDate cutoffDate, boolean refresh)
 	{
 		List<Ticket> errorTickets = new ArrayList<>();
 		AcceloFilter<Ticket> filter = new AcceloFilter<>();
