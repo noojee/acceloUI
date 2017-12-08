@@ -101,22 +101,7 @@ public class BillingAdjustmentRequired extends TicketFilter
 		if (ticket.getPriority() == Priority.NoojeePriority.Critical
 				|| ticket.getPriority() == Priority.NoojeePriority.Urgent)
 		{
-			// We always bill a min of 1 hour for Critical and Urgent cases.
-			if (ticket.getBillableSeconds() == 0)
-			{
-				// Urgent and critical cases are always billable.
-				Activity activity = new Activity();
-				activity.setAgainst(AgainstType.ticket,ticket.getId());
-				activity.setOwner(ActivityOwnerType.staff, ticket.getAssignee());
-				activity.setSubject("Opened Ticket");
-				activity.setDetails("Code: Critical +1");
-				activity.setDateTimeStarted(ticket.getDateTimeStarted());
-				activity.setBillable(Duration.of(1, ChronoUnit.HOURS));
-				
-				new ActivityDao().insert(activity);
-			}
-
-			daoTicket.roundBilling(ticket, 60, 5);
+				daoTicket.roundBilling(ticket, 60, 5);
 		}
 		else
 			daoTicket.roundBilling(ticket, 15, 5);

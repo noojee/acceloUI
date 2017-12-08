@@ -482,6 +482,7 @@ public class TicketFilterView extends VerticalLayout implements View
 									.forEach(ticket ->
 										{
 											BillingAdjustmentRequired.roundBilling(ticket);
+											AcceloCache.getInstance().flushEntity(ticket, true);
 											int count = progressCount.incrementAndGet();
 											updateLoading("Processed " + count + " tickets of " + tickets.size());
 										});

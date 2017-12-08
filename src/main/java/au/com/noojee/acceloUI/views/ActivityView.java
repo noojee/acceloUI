@@ -9,13 +9,17 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.vaadin.data.Binder;
+import com.vaadin.data.converter.StringToIntegerConverter;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.event.ShortcutAction.KeyCode;
 import com.vaadin.icons.VaadinIcons;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.Page;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.shared.ui.MarginInfo;
+import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Button.ClickEvent;
 import com.vaadin.ui.Component;
@@ -27,16 +31,21 @@ import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextArea;
 import com.vaadin.ui.TextField;
+import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
 import com.vaadin.ui.renderers.LocalDateTimeRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 import au.com.noojee.acceloUI.util.JobService;
 import au.com.noojee.acceloUI.util.SMNotification;
 import au.com.noojee.acceloapi.AcceloException;
+import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.ActivityDao;
+import au.com.noojee.acceloapi.dao.CompanyDao;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
+import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.util.Formatters;
 import au.com.noojee.acceloapi.util.LocalDateTimeHelper;
@@ -67,6 +76,7 @@ public class ActivityView extends VerticalLayout implements View
 	private Label activityViewDetails;
 
 	private Label ticketId = new Label();
+	private Label companyLabel = new Label();
 	private Label ticketStartDate = new Label();
 	private Label ticketContact = new Label();
 	private Label ticketStatus = new Label();
@@ -209,13 +219,85 @@ public class ActivityView extends VerticalLayout implements View
 
 	private void layoutHeader()
 	{
+		VerticalLayout header = new VerticalLayout();
+		this.addComponent(header);
+		header.setMargin(false);
+
+		HorizontalLayout headingLayout = new HorizontalLayout();
+		header.addComponent(headingLayout);
 		Label heading = new Label("<H2><b>Ticket Activities</b></H2>");
 		heading.setContentMode(ContentMode.HTML);
-		this.addComponent(heading);
+		headingLayout.addComponent(heading);
 
-		this.addComponent(createTicketDetails());
+		Button findButton = new Button("Find");
+		headingLayout.addComponent(findButton);
+		headingLayout.setComponentAlignment(findButton, Alignment.BOTTOM_LEFT);
+		findButton.setDisableOnClick(true);
+		findButton.addClickListener(l -> selectTicket());
 
-		this.addComponent(createUserFilter());
+		header.addComponent(createTicketDetails());
+
+		header.addComponent(createUserFilter());
+	}
+
+	static class Form
+	{
+		Integer ticketNo = 0;
+
+		static void setTicketNo(Form form, Integer ticketNo)
+		{
+			form.ticketNo = ticketNo;
+		}
+
+		Integer getTicketNo()
+		{
+			return this.ticketNo;
+		}
+	}
+
+	private void selectTicket()
+	{
+		VerticalLayout popupContent = new VerticalLayout();
+		TextField issueField = new TextField("Ticket No.:");
+		popupContent.addComponent(issueField);
+		issueField.focus();
+
+		Form form = new Form();
+		Binder<Form> binder = new Binder<Form>();
+		binder.setBean(form);
+		binder.forField(issueField)
+				.withConverter(new StringToIntegerConverter("Must be Integer"))
+				.asRequired("Please enter a ticket no.")
+				.bind(Form::getTicketNo, Form::setTicketNo);
+
+		HorizontalLayout buttons = new HorizontalLayout();
+
+		Button cancel = new Button("Cancel");
+		buttons.addComponent(cancel);
+		Button ok = new Button("OK");
+		ok.setClickShortcut(KeyCode.ENTER);
+		ok.addStyleName(ValoTheme.BUTTON_PRIMARY);
+		buttons.addComponent(ok);
+
+		popupContent.addComponent(buttons);
+
+		final Window dialog = new Window("Select Ticket");
+		dialog.setModal(true);
+		UI.getCurrent().addWindow(dialog);
+		dialog.setContent(popupContent);
+
+		ok.addClickListener(l ->
+			{
+				dialog.close();
+				findTicket(binder.getBean());
+			});
+		cancel.addClickListener(l -> dialog.close());
+
+	}
+
+	private void findTicket(Form form)
+	{
+		loadData(form.getTicketNo().toString());
 	}
 
 	private void loadData(String ticketId)
@@ -263,8 +345,12 @@ public class ActivityView extends VerticalLayout implements View
 	private void displayTicketSummary(String ticketId)
 	{
 		daoTicket = new TicketDao();
+
 		ticket = daoTicket.getById(Integer.valueOf(ticketId));
+		Company company = new CompanyDao().getById(ticket.getCompanyId());
+
 		this.ticketId.setValue("Ticket: " + ticket.getId());
+		this.companyLabel.setValue("Company: " + company.getName());
 		this.ticketStartDate.setValue("Open: " + LocalDateTimeHelper.format(ticket.getDateTimeStarted()));
 		this.ticketContact.setValue("Contact: " + new TicketDao().getContact(ticket).getFullName());
 		this.ticketStatus.setValue("Status: " + ticket.getStatus().getTitle());
@@ -307,6 +393,8 @@ public class ActivityView extends VerticalLayout implements View
 
 				// The next line actually replaces the button
 				this.activityProvider.refreshItem(activityLine);
+				
+				AcceloCache.getInstance().flushEntity(ticket, true);
 				updateTotalBilledLabel();
 			});
 
@@ -385,26 +473,13 @@ public class ActivityView extends VerticalLayout implements View
 
 		if (rounded != minutes)
 		{
-			JobService.Job<Tuple<Optional<Activity>, Optional<Activity>>> job = JobService.getInstance()
+			JobService.Job<Activity> job = JobService.getInstance()
 					.newJob("Set Minimum Billable " + ticket.getId(), () -> new TicketDao().roundBilling(ticket, 15, 5),
-							resultTuple ->
+							newActivity ->
 								{
-									resultTuple.lhs.ifPresent(original ->
-										{
-											// find the activity line for the activity that was updated
-											Optional<ActivityLine> selectedLine = activityLines.stream()
-													.filter(line -> line.getActivity().equals(original))
-													.findFirst();
-											selectedLine.ifPresent(activityLine ->
-												{
-													resultTuple.rhs.ifPresent(replacement ->
-														{
-															activityLine.setActivity(replacement);
-															this.activityProvider.refreshItem(activityLine);
-															updateTotalBilledLabel();
-														});
-												});
-										});
+									this.activityLines.add(new ActivityLine(newActivity));
+									this.activityProvider.refreshAll();
+									updateTotalBilledLabel();
 									l.getButton().setEnabled(true);
 								});
 
@@ -430,6 +505,7 @@ public class ActivityView extends VerticalLayout implements View
 
 		HorizontalLayout layout = new HorizontalLayout();
 		layout.addComponent(ticketId);
+		layout.addComponent(companyLabel);
 		layout.addComponent(ticketContact);
 		layout.addComponent(ticketStartDate);
 		layout.addComponent(ticketStatus);
@@ -473,8 +549,8 @@ public class ActivityView extends VerticalLayout implements View
 
 	private void onEdit()
 	{
-		URL editURL = new TicketDao().getEditURL( "noojee.accelo.com", ticket);
-		
+		URL editURL = new TicketDao().getEditURL("noojee.accelo.com", ticket);
+
 		Page.getCurrent().open(editURL.toExternalForm(),
 				"_accelo", true);
 	}
