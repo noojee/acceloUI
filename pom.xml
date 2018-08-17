@@ -126,7 +126,6 @@
 		<!-- <dependency> <groupId>org.vaadin.addon.oauthpopup</groupId> <artifactId>oauthpopup</artifactId> 
 			<version>1.0.0</version> </dependency> -->
 
-
 		<dependency>
 			<groupId>oauthpopup</groupId>
 			<artifactId>oauthpopup</artifactId>

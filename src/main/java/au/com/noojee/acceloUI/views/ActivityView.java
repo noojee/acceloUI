@@ -191,6 +191,14 @@ public class ActivityView extends VerticalLayout implements View
 		setMin.addClickListener(l -> roundBilling(l));
 		buttons.addComponent(setMin);
 
+		Button setNonBillableButton = new Button("Set Non-Billable");
+		setNonBillableButton.addClickListener(l -> setNonBillable(l));
+		buttons.addComponent(setNonBillableButton);
+
+		Button setBillableButton = new Button("Set Billable");
+		setBillableButton.addClickListener(l -> setBillable(l));
+		buttons.addComponent(setBillableButton);
+
 		Button editButton = new Button("Edit");
 		editButton.addClickListener(l -> onEdit());
 		buttons.addComponent(editButton);
@@ -362,6 +370,82 @@ public class ActivityView extends VerticalLayout implements View
 		this.ticketSubject.setValue("<b>Subject: " + ticket.getTitle() + "</b>");
 	}
 
+	private void setBillable(ClickEvent e)
+	{
+
+		JobService.Job<Ticket> job = JobService.getInstance()
+				.newJob("Mark Ticket as Non Billable: " + ticket.getId(), () ->
+					{
+						for (ActivityLine activityLine : activityLines)
+						{
+							Activity activity = activityLine.getActivity();
+							if (activity.getNonBillable().getSeconds() > 0)
+							{
+
+								activity.setBillable(activity.getNonBillable().plus(activity.getBillable()));
+								activity.setNonBillable(Duration.ofSeconds(0));
+
+								Activity newActivity = new ActivityDao().replace(activity);
+
+								activityLine.setActivity(newActivity);
+
+								// The next line actually replaces the button
+								this.activityProvider.refreshItem(activityLine);
+							}
+
+						}
+						return ticket;
+					});
+
+		job.addCompleteListener(ticket ->
+			{
+				e.getButton().setEnabled(true);
+
+				AcceloCache.getInstance().flushEntity(ticket, true);
+				updateTotalBilledLabel();
+			});
+
+		job.submit();
+
+	}
+
+	private void setNonBillable(ClickEvent e)
+	{
+
+		JobService.Job<Ticket> job = JobService.getInstance()
+				.newJob("Mark Ticket as Non Billable: " + ticket.getId(), () ->
+					{
+						for (ActivityLine activityLine : activityLines)
+						{
+							Activity activity = activityLine.getActivity();
+							if (activity.getBillable().getSeconds() > 0)
+							{
+								activity.setNonBillable(activity.getNonBillable().plus(activity.getBillable()));
+								activity.setBillable(Duration.ofSeconds(0));
+								Activity newActivity = new ActivityDao().replace(activity);
+
+								activityLine.setActivity(newActivity);
+
+								// The next line actually replaces the button
+								this.activityProvider.refreshItem(activityLine);
+							}
+
+						}
+						return ticket;
+					});
+
+		job.addCompleteListener(ticket ->
+			{
+				e.getButton().setEnabled(true);
+
+				AcceloCache.getInstance().flushEntity(ticket, true);
+				updateTotalBilledLabel();
+			});
+
+		job.submit();
+
+	}
+
 	private void changeBillable(ClickEvent e, ActivityLine activityLine)
 	{
 		// stop the button being clicked again until the db update is complete.
@@ -393,7 +477,7 @@ public class ActivityView extends VerticalLayout implements View
 
 				// The next line actually replaces the button
 				this.activityProvider.refreshItem(activityLine);
-				
+
 				AcceloCache.getInstance().flushEntity(ticket, true);
 				updateTotalBilledLabel();
 			});
