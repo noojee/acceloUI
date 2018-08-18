@@ -47,9 +47,8 @@ import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.entities.Company;
 import au.com.noojee.acceloapi.entities.Ticket;
-import au.com.noojee.acceloapi.util.Formatters;
+import au.com.noojee.acceloapi.util.Format;
 import au.com.noojee.acceloapi.util.LocalDateTimeHelper;
-import au.com.noojee.acceloapi.util.Tuple;
 
 /**
  * Show all companies with a retainer.
@@ -133,7 +132,7 @@ public class ActivityView extends VerticalLayout implements View
 		grid.addColumn(ActivityLine::getDateTimeStarted, new LocalDateTimeRenderer("dd/MM/yy HH:mm"))
 				.setCaption("Started");
 
-		grid.addColumn(activityLine -> Formatters.format(activityLine.getBillable())).setCaption("Billable")
+		grid.addColumn(activityLine -> Format.format(activityLine.getBillable())).setCaption("Billable")
 				.setStyleGenerator(activityLine -> "align-right");
 
 		grid.addComponentColumn(activityLine ->
@@ -149,10 +148,10 @@ public class ActivityView extends VerticalLayout implements View
 				return link;
 			}).setWidth(80).setCaption("Move");
 
-		grid.addColumn(activityLine -> Formatters.format(activityLine.getNonBillable())).setCaption("NonBillable")
+		grid.addColumn(activityLine -> Format.format(activityLine.getNonBillable())).setCaption("NonBillable")
 				.setStyleGenerator(activityLine -> "align-right");
 
-		grid.addColumn(activityLine -> Formatters.format(activityLine.getRateCharged())).setCaption("Rate")
+		grid.addColumn(activityLine -> Format.format(activityLine.getRateCharged())).setCaption("Rate")
 				.setStyleGenerator(activityLine -> "align-right");
 
 		grid.addColumn(activityLine -> activityLine.isApproved()).setCaption("Approved");
@@ -535,7 +534,7 @@ public class ActivityView extends VerticalLayout implements View
 	}
 
 	/**
-	 * Rounds billing up to the nearest 15 min block as per our standard contracts.
+	 * Rounds billing up to the nearest 5 min block as per our standard contracts.
 	 * 
 	 * @param l
 	 */
@@ -551,14 +550,14 @@ public class ActivityView extends VerticalLayout implements View
 		long rounded = minutes;
 
 		// We only round up if they are more than 5 minutes into the next block.
-		long excess = minutes % 15;
-		if (minutes < 15 || excess > 5)
-			rounded = (long) (Math.ceil(minutes / 15.0f) * 15);
+		long excess = minutes % TicketDao.MIN_BILL_INTERVAL;
+		if (minutes < TicketDao.MIN_BILL_INTERVAL || excess >= TicketDao.BILLING_LEWAY)
+			rounded = (long) (Math.ceil(minutes / (float)TicketDao.MIN_BILL_INTERVAL) * TicketDao.MIN_BILL_INTERVAL);
 
 		if (rounded != minutes)
 		{
 			JobService.Job<Activity> job = JobService.getInstance()
-					.newJob("Set Minimum Billable " + ticket.getId(), () -> new TicketDao().roundBilling(ticket, 15, 5),
+					.newJob("Set Minimum Billable " + ticket.getId(), () -> new TicketDao().roundBilling(ticket, TicketDao.MIN_BILL_INTERVAL, TicketDao.BILLING_LEWAY),
 							newActivity ->
 								{
 									this.activityLines.add(new ActivityLine(newActivity));
@@ -577,7 +576,7 @@ public class ActivityView extends VerticalLayout implements View
 
 	private void updateTotalBilledLabel()
 	{
-		this.ticketTotalBilled.setValue("Total Billed: " + Formatters.format(this.daoTicket.getBillable(this.ticket)));
+		this.ticketTotalBilled.setValue("Total Billed: " + Format.format(this.daoTicket.getBillable(this.ticket)));
 
 	}
 

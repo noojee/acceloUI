@@ -3,14 +3,10 @@ package au.com.noojee.acceloUI.views;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.javamoney.moneta.Money;
+import org.joda.money.Money;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.CompanyDao;
@@ -24,7 +20,6 @@ import au.com.noojee.acceloapi.filter.AcceloFilter;
 class ContractLine implements Comparable<ContractLine>
 {
 	static Logger logger = LogManager.getLogger();
-	static CurrencyUnit currencyUnit = Monetary.getCurrency(Locale.getDefault());
 
 	Contract contract;
 	String companyName;

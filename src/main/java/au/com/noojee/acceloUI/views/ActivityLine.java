@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.javamoney.moneta.Money;
+import org.joda.money.Money;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.StaffDao;

@@ -45,7 +45,6 @@ import au.com.noojee.acceloUI.views.ticketFilters.UnapprovedTicketFilter;
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.cache.AcceloCache;
 import au.com.noojee.acceloapi.dao.TicketDao;
-import au.com.noojee.acceloapi.entities.Priority;
 import au.com.noojee.acceloapi.entities.Ticket;
 
 /**
@@ -474,7 +473,7 @@ public class TicketFilterView extends VerticalLayout implements View
 			AtomicInteger progressCount = new AtomicInteger(0);
 
 			ConfirmDialog.show(ui, "Round Billing",
-					"Clicking Run will round billing data up to the next 15 min block (60 min for Critical and Urgent) for all tickets of type "
+					"Clicking Run will round billing data up to the next " + TicketDao.MIN_BILL_INTERVAL + " min block (60 min for Critical and Urgent) for all tickets of type "
 							+ filter.getName(),
 					"Run", "Cancel", () ->
 						{

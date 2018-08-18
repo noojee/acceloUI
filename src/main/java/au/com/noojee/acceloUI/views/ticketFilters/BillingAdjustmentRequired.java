@@ -2,20 +2,17 @@ package au.com.noojee.acceloUI.views.ticketFilters;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import au.com.noojee.acceloapi.dao.ActivityDao;
-import au.com.noojee.acceloapi.dao.ActivityOwnerType;
 import au.com.noojee.acceloapi.dao.TicketDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.entities.Priority;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.entities.meta.fieldTypes.OrderByField.Order;
-import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
 import au.com.noojee.acceloapi.util.Conversions;
 
@@ -91,7 +88,7 @@ public class BillingAdjustmentRequired extends TicketFilter
 			return totalBillable.toMillis() == 0 || new TicketDao().isBillAdjustmentRequired(totalBillable, 60, 5);
 		}
 		else
-			return new TicketDao().isBillAdjustmentRequired(totalBillable, 15, 5);
+			return new TicketDao().isBillAdjustmentRequired(totalBillable, TicketDao.MIN_BILL_INTERVAL, TicketDao.BILLING_LEWAY);
 	}
 
 	public static void roundBilling(Ticket ticket)
@@ -104,7 +101,7 @@ public class BillingAdjustmentRequired extends TicketFilter
 				daoTicket.roundBilling(ticket, 60, 5);
 		}
 		else
-			daoTicket.roundBilling(ticket, 15, 5);
+			daoTicket.roundBilling(ticket, TicketDao.MIN_BILL_INTERVAL, TicketDao.BILLING_LEWAY);
 
 	}
 

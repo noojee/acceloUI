@@ -30,7 +30,7 @@ import au.com.noojee.acceloapi.dao.ContractDao;
 import au.com.noojee.acceloapi.entities.Contract;
 import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.util.Formatters;
+import au.com.noojee.acceloapi.util.Format;
 
 /**
  * Show all companies with a retainer.
@@ -99,10 +99,10 @@ public class CompanyView extends VerticalLayout implements View
 			grid.addColumn(ContractLine::getContractTitle).setCaption("Contract").setId("Contract");
 			grid.addColumn(ContractLine::getDateStarted, new LocalDateRenderer("dd/MM/yyyy")).setCaption("Start");
 			grid.addColumn(ContractLine::getDateExpires, new LocalDateRenderer("dd/MM/yyyy")).setCaption("End");
-			grid.addColumn(contractLine -> Formatters.format(contractLine.getContractValue())).setCaption("Value")
+			grid.addColumn(contractLine -> Format.format(contractLine.getContractValue())).setCaption("Value")
 					.setStyleGenerator(contractLine -> "align-right");
 
-			grid.addColumn(contractLine -> Formatters.format(contractLine.getRemainingValue())).setCaption("Remaining")
+			grid.addColumn(contractLine -> Format.format(contractLine.getRemainingValue())).setCaption("Remaining")
 					.setStyleGenerator(contractLine -> "align-right");
 
 			// grid.addColumn(contract ->
@@ -123,10 +123,10 @@ public class CompanyView extends VerticalLayout implements View
 			.setCaption("Report");
 
 
-			grid.addColumn(contract -> Formatters.format(contract.getMtdWork())).setCaption("MTD Work")
+			grid.addColumn(contract -> Format.format(contract.getMtdWork())).setCaption("MTD Work")
 					.setStyleGenerator(contract -> "align-right");
 
-			grid.addColumn(contract -> Formatters.format(contract.getLastMonthWork())).setCaption("Last Month Work")
+			grid.addColumn(contract -> Format.format(contract.getLastMonthWork())).setCaption("Last Month Work")
 					.setStyleGenerator(contract -> "align-right");
 
 			// grid.addComponentColumn(contract -> new Button("Refresh", e ->

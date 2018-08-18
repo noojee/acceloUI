@@ -2,7 +2,6 @@ package au.com.noojee.acceloUI.views;
 
 import java.net.URL;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +45,7 @@ import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.entities.meta.Ticket_;
 import au.com.noojee.acceloapi.entities.types.AgainstType;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.util.Formatters;
+import au.com.noojee.acceloapi.util.Format;
 
 /**
  * Show all companies with a retainer.
@@ -125,10 +124,10 @@ public class TicketView extends VerticalLayout implements View
 			if (contract != null)
 			{
 				contractTitle.setValue("Contract: " + contract.getTitle());
-				contractStartDate.setValue("Start: " + Formatters.format(contract.getDateStarted()));
-				contractEndDate.setValue("Expires: " + Formatters.format(contract.getDateExpires()));
-				contractValue.setValue("Value: " + Formatters.format(contract.getValue()));
-				contractRemaining.setValue("Remaining: " + Formatters.format(contract.getRemainingValue()));
+				contractStartDate.setValue("Start: " + Format.format(contract.getDateStarted()));
+				contractEndDate.setValue("Expires: " + Format.format(contract.getDateExpires()));
+				contractValue.setValue("Value: " + Format.format(contract.getValue()));
+				contractRemaining.setValue("Remaining: " + Format.format(contract.getRemainingValue()));
 			}
 
 			logger.error("Start fetch Tickets");

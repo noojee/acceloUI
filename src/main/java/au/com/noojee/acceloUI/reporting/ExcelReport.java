@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.List;
 
@@ -19,7 +20,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.javamoney.moneta.Money;
+import org.joda.money.Money;
 
 import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.ActivityDao;
@@ -35,8 +36,9 @@ import au.com.noojee.acceloapi.entities.Invoice;
 import au.com.noojee.acceloapi.entities.Staff;
 import au.com.noojee.acceloapi.entities.Ticket;
 import au.com.noojee.acceloapi.entities.types.TicketStatus;
+import au.com.noojee.acceloapi.util.Constants;
 import au.com.noojee.acceloapi.util.Conversions;
-import au.com.noojee.acceloapi.util.Formatters;
+import au.com.noojee.acceloapi.util.Format;
 
 /**
  * A very simple program that writes some data to an Excel file using the Apache
@@ -98,8 +100,8 @@ public class ExcelReport
 		int columnCount = 0;
 
 		Cell cell = row.createCell(columnCount++);
-		cell.setCellValue("SLA Usage Summary for the period: " + Formatters.format(contractPeriod.getDateCommenced())
-				+ " - " + Formatters.format(contractPeriod.getDateExpires()));
+		cell.setCellValue("SLA Usage Summary for the period: " + Format.format(contractPeriod.getDateCommenced())
+				+ " - " + Format.format(contractPeriod.getDateExpires()));
 		cell.setCellStyle(boldStyle);
 		ticketSheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
 
@@ -388,7 +390,7 @@ public class ExcelReport
 		cell.setCellValue("Body");
 		cell.setCellStyle(boldStyle);
 
-		totalCharge = Money.of(0, Formatters.getCurrency());
+		totalCharge = Constants.MONEY_ZERO;
 
 		boolean foundActivities = false;
 
@@ -426,7 +428,7 @@ public class ExcelReport
 				cell.setCellValue(formatDuration(activity.getNonBillable()));
 				// Rate Charged
 				cell = row.createCell(columnCount++);
-				cell.setCellValue(Formatters.format(activity.getRateCharged()));
+				cell.setCellValue(Format.format(activity.getRateCharged()));
 				cell.setCellType(CellType.NUMERIC);
 				cell.setCellStyle(dollarStyle);
 
@@ -434,10 +436,10 @@ public class ExcelReport
 				chargeColumn = columnCount;
 				cell = row.createCell(columnCount++);
 				Money charge = calculateCharge(activity.getRateCharged(), activity.getBillable());
-				cell.setCellValue(Formatters.format(charge));
+				cell.setCellValue(Format.format(charge));
 				cell.setCellType(CellType.NUMERIC);
 				cell.setCellStyle(dollarAndCentsStyle);
-				totalCharge.add(charge);
+				totalCharge.plus(charge);
 
 				// Invoice Id
 				cell = row.createCell(columnCount++);
@@ -463,7 +465,7 @@ public class ExcelReport
 
 			// Total amount
 			cell = row.createCell(chargeColumn);
-			cell.setCellValue(Formatters.format(totalCharge)); // convert to
+			cell.setCellValue(Format.format(totalCharge)); // convert to
 																// dollars
 			cell.setCellType(CellType.NUMERIC);
 			cell.setCellStyle(dollarAndCentsStyle);
@@ -485,13 +487,13 @@ public class ExcelReport
 	 */
 	private Money calculateCharge(Money rate, Duration billable)
 	{
-		float hours = billable.toHours();
-		float minutes = billable.toMinutes() % 60;
-		float seconds = billable.getSeconds() % 60;
+		long hours = billable.toHours();
+		long minutes = billable.toMinutes() % 60;
+		long seconds = billable.getSeconds() % 60;
 		// rate *= 100;
 
-		Money charge = (rate.multiply(hours).add(rate.multiply(minutes).divide(60))
-				.add(rate.multiply(seconds).divide(3600)));
+		Money charge = (rate.multipliedBy(hours).plus(rate.multipliedBy(minutes).dividedBy(60, RoundingMode.HALF_UP))
+				.plus(rate.multipliedBy(seconds).dividedBy(3600, RoundingMode.HALF_UP)));
 
 		// round up
 		// charge = (int) (((float) charge) + 0.5f);

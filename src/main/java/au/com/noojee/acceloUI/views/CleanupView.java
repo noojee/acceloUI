@@ -28,7 +28,7 @@ import au.com.noojee.acceloapi.AcceloException;
 import au.com.noojee.acceloapi.dao.ActivityDao;
 import au.com.noojee.acceloapi.entities.Activity;
 import au.com.noojee.acceloapi.filter.AcceloFilter;
-import au.com.noojee.acceloapi.util.Formatters;
+import au.com.noojee.acceloapi.util.Format;
 
 /**
  * Show all companies with a retainer.
@@ -146,7 +146,7 @@ public class CleanupView extends VerticalLayout implements View
 
 		activityGrid.addColumn(ActivityLine::getDateTimeCreated, new LocalDateTimeRenderer("dd/MM/yy HH:mm")).setCaption("Created");
 
-		activityGrid.addColumn(activityLine -> Formatters.format(activityLine.getBillable())).setCaption("Billable")
+		activityGrid.addColumn(activityLine -> Format.format(activityLine.getBillable())).setCaption("Billable")
 				.setStyleGenerator(activityLine -> "align-right");
 
 		activityGrid.addComponentColumn(activityLine ->
@@ -162,11 +162,11 @@ public class CleanupView extends VerticalLayout implements View
 				return link;
 			}).setWidth(80).setCaption("Move");
 
-		activityGrid.addColumn(activityLine -> Formatters.format(activityLine.getNonBillable()))
+		activityGrid.addColumn(activityLine -> Format.format(activityLine.getNonBillable()))
 				.setCaption("NonBillable")
 				.setStyleGenerator(activityLine -> "align-right");
 
-		activityGrid.addColumn(activityLine -> Formatters.format(activityLine.getRateCharged())).setCaption("Rate")
+		activityGrid.addColumn(activityLine -> Format.format(activityLine.getRateCharged())).setCaption("Rate")
 				.setStyleGenerator(activityLine -> "align-right");
 
 		activityGrid.addColumn(activityLine -> activityLine.isApproved()).setCaption("Approved");
